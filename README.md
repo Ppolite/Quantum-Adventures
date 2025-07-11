@@ -1,525 +1,72 @@
-# Quantum-Adventures
-import React from 'react';
-import { StyleSheet, Text, View, Button, TouchableOpacity, Image, ScrollView } from 'react-native';
-import Lesson from './components/Lesson';
-import Quiz from './components/Quiz';
-import CharacterGuide from './components/CharacterGuide';
-import InAppPurchase from './components/InAppPurchase';
+# Quantum Fun Adventures
 
-export default function App() {
-  const [currentLesson, setCurrentLesson] = useState(1);
-  const [currentQuiz, setCurrentQuiz] = useState(1);
-  const [quizScore, setQuizScore] = useState(0);
-  const [isLessonComplete, setIsLessonComplete] = useState(false);
-  const [showCharacterGuide, setShowCharacterGuide] = useState(false);
-  const [showInAppPurchase, setShowInAppPurchase] = useState(false);
+This repo contains a small web prototype inspired by the original React Native snippet. It demonstrates a simple learning flow with lessons, quizzes, a short character guide, and fun quantum randomness features like coin flips and dice rolls. The goal is to inspire a revolutionary quantum curriculum for college students by showcasing interactive ideas in a lightweight web app.
 
-  const completeLesson = () => {
-    setIsLessonComplete(true);
-  };
+## Running the demo
 
-  const startNextLesson = () => {
-    setCurrentLesson(currentLesson + 1);
-    setIsLessonComplete(false);
-  };
+Open `index.html` in any modern web browser. The application is entirely client side and requires no build tools. After the first load it works offline thanks to a simple service worker. You can also install it to your home screen or desktop like a regular app.
 
-  const startNextQuiz = () => {
-    setCurrentQuiz(currentQuiz + 1);
-    setQuizScore(0);
-  };
+Your progress and score are saved in `localStorage`, so you can continue where you left off. Use the **Reset Progress** button in the footer to clear saved data.
 
-  const onQuizComplete = (score) => {
-    setQuizScore(score);
-  };
+Each completed lesson reveals a random quantum fun fact and every quiz answer includes a short explanation so you learn even when you miss a question.
 
-  const openCharacterGuide = () => {
-    setShowCharacterGuide(true);
-  };
+## Project structure
 
-  const closeCharacterGuide = () => {
-    setShowCharacterGuide(false);
-  };
+- `index.html` – main HTML file which loads the bundled React code.
+- `app.js` – React components and application logic.
+- `style.css` – basic styles used by the app.
+- `manifest.json` – web app manifest for PWA support.
+- `sw.js` – service worker enabling offline usage.
+- `utils.js` – small helper functions used across the app.
+- `test.js` – quick sanity checks for the helper functions.
+- app icons are embedded directly in `manifest.json` as data URIs.
+The utilities now include helpers like `applyHadamard()` and a hidden `secretSauceBonus()` used for bonus scoring.
 
-  const openInAppPurchase = () => {
-    setShowInAppPurchase(true);
-  };
+The header displays a progress bar with a percentage indicator showing how far you've progressed through the available lessons and quizzes.
 
-  const closeInAppPurchase = () => {
-    setShowInAppPurchase(false);
-  };
+After each lesson a fun fact modal pops up, and quiz results explain the correct answer.
+The footer includes buttons to **Flip Coin** and **Roll Dice**, both using quantum randomness for fun demonstrations.
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Quantum Fun Adventures</Text>
-      </View>
-      <ScrollView>
-        <View style={styles.content}>
-          <Lesson
-            id={currentLesson}
-            onComplete={completeLesson}
-            isComplete={isLessonComplete}
-            onNext={startNextLesson}
-          />
-          {isLessonComplete ? (
-            <Quiz id={currentQuiz} onQuizComplete={onQuizComplete} onNext={startNextQuiz} />
-          ) : null}
-        </View>
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.characterButton} onPress={openCharacterGuide}>
-          <Image source={require('./assets/character.png')} style={styles.characterImage} />
-        </TouchableOpacity>
-        <View style={styles.quizScore}>
-          <Text style={styles.quizScoreText}>Score: {quizScore}</Text>
-        </View>
-        <TouchableOpacity style={styles.purchaseButton} onPress={openInAppPurchase}>
-          <Text style={styles.purchaseButtonText}>Upgrade</Text>
-        </TouchableOpacity>
-      </View>
-      {showCharacterGuide ? (
-        <CharacterGuide onClose={closeCharacterGuide} />
-      ) : null}
-      {showInAppPurchase ? (
-        <InAppPurchase onClose={closeInAppPurchase} />
-      ) : null}
-    </View>
-  );
-}
+## Quantum VR Adventure
 
-const styles = StyleSheet.create({
-  container: {}
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    height: 50,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  footer: {
-    height: 50,
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginVertical: 20,
-    marginHorizontal: 10,
-  },
-  lessonTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginVertical: 10,
-    marginHorizontal: 10,
-  },
-  lessonImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-    marginVertical: 10,
-  },
-  lessonContent: {
-    fontSize: 18,
-    marginHorizontal: 10,
-    marginVertical: 10,
-  },
-  quizContainer: {
-    flex: 1,
-    marginHorizontal: 10,
-    marginVertical: 20,
-  },
-  quizQuestion: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  quizAnswer: {
-    fontSize: 18,
-    marginVertical: 5,
-  },
-  quizButton: {
-    marginVertical: 10,
-    backgroundColor: '#0099ff',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  quizButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-  header: {
-    height: 80,
-    backgroundColor: '#0099ff',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-  },
-  characterButton: {
-    padding: 5,
-  },
-  characterImage: {
-    width: 30,
-    height: 30,
-  },
-  quizScore: {
-    alignItems: 'center',
-  },
-  quizScoreText: {
-    fontSize: 18,
-    color: '#fff',
-  },
-  purchaseButton: {
-    backgroundColor: '#ff9b00',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  purchaseButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-});
+The prototype also includes an experimental virtual reality scene powered by [A-Frame](https://aframe.io/). An AI agent creates a small timeline of events using the helper utilities so each visit feels a little different. Every five seconds a new object or message appears in the 3D scene to illustrate how quantum states can evolve over time. Open the page in any WebVR-enabled browser or a regular desktop browser to view the embedded scene.
 
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginVertical: 20,
-    marginHorizontal: 10,
-  },
-  lessonTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginVertical: 10,
-    marginHorizontal: 10,
-  },
-  lessonImage: {
-    width: '100%',
-    height: 200,
-    resizeMode: 'cover',
-    marginVertical: 10,
-  },
-  lessonContent: {
-    fontSize: 18,
-    marginHorizontal: 10,
-    marginVertical: 10,
-  },
-  quizContainer: {
-    flex: 1,
-    marginHorizontal: 10,
-    marginVertical: 20,
-  },
-  quizQuestion: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  quizAnswer: {
-    fontSize: 18,
-    marginVertical: 5,
-  },
-  quizButton: {
-    marginVertical: 10,
-    backgroundColor: '#0099ff',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  quizButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-  header: {
-    height: 80,
-    backgroundColor: '#0099ff',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-  },
-  characterButton: {
-    padding: 5,
-  },
-  characterImage: {
-    width: 30,
-    height: 30,
-  },
-  quizScore: {
-    alignItems: 'center',
-  },
-  quizScoreText: {
-    fontSize: 18,
-    color: '#fff',
-  },
-  purchaseButton: {
-    backgroundColor: '#ff9b00',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  purchaseButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-});
+### How the AI agent works
 
-    backgroundColor: '#ff9b00',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
-  purchaseButtonText: {
-    color: '#fff',
-    fontSize: 18,
-  },
-});
+- `vr.js` builds a timeline with random shapes and colors chosen using the `quantumDice()` helper.
+- Each event is scheduled to run in order, creating a short guided tour.
+- The scene runs automatically when the page loads.
 
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Button, TouchableOpacity, Image, ScrollView } from 'react-native';
-import Lesson from './components/Lesson';
-import Quiz from './components/Quiz';
-import CharacterGuide from './components/CharacterGuide';
-import InAppPurchase from './components/InAppPurchase';
+For additional study materials, the app also provides a **Resources** section with suggested textbooks and online tutorials.
 
-export default function App() {
-  const [currentLesson, setCurrentLesson] = useState(1);
-  const [currentQuiz, setCurrentQuiz] = useState(1);
-  const [quizScore, setQuizScore] = useState(0);
-  const [isLessonComplete, setIsLessonComplete] = useState(false);
-  const [showCharacterGuide, setShowCharacterGuide] = useState(false);
-  const [showInAppPurchase, setShowInAppPurchase] = useState(false);
+### Running tests
 
-  const completeLesson = () => {
-    setIsLessonComplete(true);
-  };
+With Node.js installed, run:
 
-  const startNextLesson = () => {
-    setCurrentLesson(currentLesson + 1);
-    setIsLessonComplete(false);
-  };
+```bash
+node test.js
+```
 
-  const startNextQuiz = () => {
-    setCurrentQuiz(currentQuiz + 1);
-    setQuizScore(0);
-  };
+This executes a few basic checks on the helper functions.
 
-  const onQuizComplete = (score) => {
-    setQuizScore(score);
-  };
+Feel free to expand the lesson and quiz data or adapt the components for a larger project.
 
-  const openCharacterGuide = () => {
-    setShowCharacterGuide(true);
-  };
+## License AI Game Mode
 
-  const closeCharacterGuide = () => {
-    setShowCharacterGuide(false);
-  };
+The prototype doubles as a small "License AI Game" designed to keep learning fun.
+Play through lessons and quizzes to earn points. Correct answers might trigger
+a hidden bonus via the secret sauce algorithm. Use the **Rules** button or press
+`r` on your keyboard at any time to read the game rules. Scores accumulate and
+unlock extra objects in the VR adventure.
 
-  const openInAppPurchase = () => {
-    setShowInAppPurchase(true);
-  };
+### User controls
 
-  const closeInAppPurchase = () => {
-    setShowInAppPurchase(false);
-  };
+- **Guide** or `g` – open the mascot guide.
+- **Rules** or `r` – view how scoring works.
+- **Reset Progress** – start over from the beginning.
+- **Flip Coin** / **Roll Dice** – random quantum demos.
+- **Resources** – suggested textbooks and tutorials.
 
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Quantum Fun Adventures</Text>
-      </View>
-      <ScrollView>
-        <View style={styles.content}>
-          <Lesson
-            id={currentLesson}
-            onComplete={completeLesson}
-            isComplete={isLessonComplete}
-            onNext={startNextLesson}
-          />
-          {isLessonComplete ? (
-            <Quiz id={currentQuiz} onQuizComplete={onQuizComplete} onNext={startNextQuiz} />
-          ) : null}
-        </View>
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.characterButton} onPress={openCharacterGuide}>
-          <Image source={require('./assets/character.png')} style={styles.characterImage} />
-        </TouchableOpacity>
-        <View style={styles.quizScore}>
-          <Text style={styles.quizScoreText}>Score: {quizScore}</Text>
-        </View>
-        <TouchableOpacity style={styles.purchaseButton} onPress={openInAppPurchase}>
-          <Text style={styles.purchaseButtonText}>Upgrade</Text>
-        </TouchableOpacity>
-      </View>
-      {showCharacterGuide ? (
-        <CharacterGuide onClose={closeCharacterGuide} />
-      ) : null}
-      {showInAppPurchase ? (
-        <InAppPurchase onClose={closeInAppPurchase} />
-      ) : null}
-    </View>
-  );
-}
+## License
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    height: 50,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  footer: {
-    height: 50,
-    backgroundColor: '#1a1a1a
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, Button, TouchableOpacity, Image, ScrollView } from 'react-native';
-import Lesson from './components/Lesson';
-import Quiz from './components/Quiz';
-import CharacterGuide from './components/CharacterGuide';
-import InAppPurchase from './components/InAppPurchase';
-
-export default function App() {
-  const [currentLesson, setCurrentLesson] = useState(1);
-  const [currentQuiz, setCurrentQuiz] = useState(1);
-  const [quizScore, setQuizScore] = useState(0);
-  const [isLessonComplete, setIsLessonComplete] = useState(false);
-  const [showCharacterGuide, setShowCharacterGuide] = useState(false);
-  const [showInAppPurchase, setShowInAppPurchase] = useState(false);
-
-  const completeLesson = () => {
-    setIsLessonComplete(true);
-  };
-
-  const startNextLesson = () => {
-    setCurrentLesson(currentLesson + 1);
-    setIsLessonComplete(false);
-  };
-
-  const startNextQuiz = () => {
-    setCurrentQuiz(currentQuiz + 1);
-    setQuizScore(0);
-  };
-
-  const onQuizComplete = (score) => {
-    setQuizScore(score);
-  };
-
-  const openCharacterGuide = () => {
-    setShowCharacterGuide(true);
-  };
-
-  const closeCharacterGuide = () => {
-    setShowCharacterGuide(false);
-  };
-
-  const openInAppPurchase = () => {
-    setShowInAppPurchase(true);
-  };
-
-  const closeInAppPurchase = () => {
-    setShowInAppPurchase(false);
-  };
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Quantum Fun Adventures</Text>
-      </View>
-      <ScrollView>
-        <View style={styles.content}>
-          <Lesson
-            id={currentLesson}
-            onComplete={completeLesson}
-            isComplete={isLessonComplete}
-            onNext={startNextLesson}
-          />
-          {isLessonComplete ? (
-            <Quiz id={currentQuiz} onQuizComplete={onQuizComplete} onNext={startNextQuiz} />
-          ) : null}
-        </View>
-      </ScrollView>
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.characterButton} onPress={openCharacterGuide}>
-          <Image source={require('./assets/character.png')} style={styles.characterImage} />
-        </TouchableOpacity>
-        <View style={styles.quizScore}>
-          <Text style={styles.quizScoreText}>Score: {quizScore}</Text>
-        </View>
-        <TouchableOpacity style={styles.purchaseButton} onPress={openInAppPurchase}>
-          <Text style={styles.purchaseButtonText}>Upgrade</Text>
-        </TouchableOpacity>
-      </View>
-      {showCharacterGuide ? (
-        <CharacterGuide onClose={closeCharacterGuide} />
-      ) : null}
-      {showInAppPurchase ? (
-        <InAppPurchase onClose={closeInAppPurchase} />
-      ) : null}
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    height: 50,
-    backgroundColor: '#1a1a1a',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  content: {
-    flex: 1,
-    padding: 20,
-  },
-  footer: {
-    height: 50,
-    backgroundColor: '#1a1a1a
-alignItems: 'center',
-justifyContent: 'space-between',
-flexDirection: 'row',
-paddingHorizontal: 20,
-characterButtonalignItems: 'center',
-justifyContent: 'space-between',
-flexDirection: 'row',
-paddingHorizontal: 20,
+This repository is provided under the **Quantum Adventures Paid License (QAPL)**. Personal and non-commercial use is allowed at no cost. Any commercial use requires purchasing a license from the original author. See the `LICENSE` file for details.
