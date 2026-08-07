@@ -1,11 +1,11 @@
 # Beat AI for Teams backend setup
 
-The Teams workspace now supports shared server-side persistence, signed member/admin sessions, invite-code joins, live leaderboards, department standings, weekly crown state, and Stripe organization checkout.
+Beat AI for Teams now supports shared server-side workspaces, signed member/admin sessions, invite-code joins, live company/department leaderboards, weekly crown state, and Stripe organization checkout.
 
 ## Required Vercel environment variables
 
 ### Shared Teams storage
-Use a Vercel Marketplace Redis/Upstash-compatible store and expose either pair:
+Connect a Vercel Marketplace Redis / Upstash-compatible store and expose either pair:
 
 - `KV_REST_API_URL`
 - `KV_REST_API_TOKEN`
@@ -20,19 +20,19 @@ or:
 
 ### Teams billing
 - `STRIPE_SECRET_KEY`
-- `STRIPE_TEAM_PRICE_ID` — Stripe recurring per-seat price used by `/api/team-checkout`.
+- `STRIPE_TEAM_PRICE_ID` — recurring per-seat price used by `/api/team-checkout`.
 
 The existing consumer Pro billing variables remain unchanged.
 
-## Current security model
+## Security model
 
 - Workspace creation returns a signed 30-day admin session.
 - Invite-code joins return signed 30-day member sessions.
 - Admin-only mutations: add department, rotate invite code, remove member, start Teams checkout.
-- Member/admin mutations: record scores.
+- Member/admin mutations: record game scores.
 - Storage credentials and Stripe keys stay server-side.
 - Private Stripe customer/subscription identifiers are stripped from workspace responses.
 
-## Next hardening step before larger paid deployments
+## Production hardening after first paid pilots
 
-Add verified email/SSO identity, Stripe webhook subscription reconciliation, rate limiting/abuse controls, audit logs, and a managed database schema if Teams usage outgrows the current Redis document model.
+Before larger deployments, add verified email/SSO identity, Stripe webhook subscription reconciliation, rate limiting/abuse controls, audit logs, and a relational database schema if Teams usage outgrows the Redis document model.
