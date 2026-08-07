@@ -26,6 +26,7 @@ assert(html.includes('beatai.games'),'custom domain missing from page');
 assert(html.includes('Turn AI literacy into a team sport'),'company positioning missing');
 assert(css.includes('.impossible')&&css.includes('.procard')&&css.includes('.achievement-grid')&&css.includes('.company-card'),'game/billing/company styles missing');
 assert(socialCss.includes('.social-grid')&&socialCss.includes('.challenge-banner')&&socialCss.includes('.share-preview'),'social styles missing');
+assert(socialCss.includes('object-fit:contain')&&socialCss.includes('object-position:center'),'share preview is not centered/contained');
 
 for(const hook of ["start('lightning')","start('boss')","start('practice')","start('impossible')",'renderAchievements','renderSkills','openReward','beginCheckout','verifySession','openPortal'])assert(app.includes(hook),`missing client behavior: ${hook}`);
 for(const route of ['/api/checkout','/api/billing-status','/api/billing-portal','/api/daily','/api/scores'])assert(app.includes(route),`client is not wired to ${route}`);
@@ -41,7 +42,7 @@ for(const token of ['beatAICompanyInterest','private company leagues','LinkedIn 
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 for(const token of ['challengeUrl','cardUrl','shareKind','beatAIReferralId','beatAIInvitedBy','navigator.share','/api/share-card'])assert(social.includes(token),`missing social v2 behavior: ${token}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
-for(const token of ['1200','630','PLAY AT BEATAI.GAMES','streak','rating','kind'])assert(shareCard.includes(token),`share card missing token: ${token}`);
+for(const token of ['1200','630','PLAY AT BEATAI.GAMES','streak','rating','kind','x="90" y="528" width="1020"','x="600" y="574" text-anchor="middle"'])assert(shareCard.includes(token),`share card missing token: ${token}`);
 new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
