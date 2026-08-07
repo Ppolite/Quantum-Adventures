@@ -12,18 +12,38 @@
   function freePacksLeft(){return Math.max(0,FREE_PACK_LIMIT-freePacksUsed())}
   function consumeFreePack(){const used=Math.min(FREE_PACK_LIMIT,freePacksUsed()+1);localStorage.setItem(freePackKey,String(used));updateFreePackUI();return FREE_PACK_LIMIT-used}
   function isPro(){try{return typeof billing==='function'&&billing().tier==='pro'}catch{return false}}
+  function launchPro(){
+    if(typeof beginCheckout==='function')return beginCheckout();
+    const proBtn=document.getElementById('proBtn');
+    if(proBtn)return proBtn.click();
+    toast?.('Beat AI Pro unlocks unlimited 15-question packs ✦');
+  }
   function updateFreePackUI(){
     const practice=document.getElementById('practiceBtn');
-    if(!practice)return;
-    const small=practice.querySelector('small');
-    if(isPro()){
-      practice.classList.remove('locked');
-      if(small)small.textContent='PRO · New AI-generated questions every run.';
-      return;
-    }
+    const hero=document.getElementById('play');
+    const status=document.getElementById('status');
+    const pro=isPro();
     const left=freePacksLeft();
-    practice.classList.toggle('locked',left===0);
-    if(small)small.textContent=left>0?`FREE · ${left} pack${left===1?'':'s'} left · 15 fresh questions each.`:'PRO · Your 3 free packs are used.';
+    if(practice){
+      const small=practice.querySelector('small');
+      practice.classList.toggle('locked',!pro&&left===0);
+      if(small)small.textContent=pro?'PRO · Unlimited fresh 15-question AI packs.':left>0?`FREE · ${left} pack${left===1?'':'s'} left · 15 fresh questions each.`:'PRO · Your 3 free packs are used.';
+    }
+    if(hero){
+      if(pro){
+        hero.textContent='PLAY A FRESH 15 →';
+        hero.onclick=()=>infiniteStart('practice');
+      }else if(left>0){
+        hero.textContent="PLAY TODAY'S 15 →";
+        hero.onclick=()=>infiniteStart('practice');
+      }else{
+        hero.textContent='GO PRO — UNLOCK UNLIMITED →';
+        hero.onclick=launchPro;
+      }
+    }
+    if(status){
+      status.textContent=pro?'Unlimited 15-question packs unlocked.':left>0?`${left} free 15-question pack${left===1?'':'s'} remaining.`:'Free packs complete. Go Pro for unlimited 15-question packs.';
+    }
   }
   function difficulty(){
     try{
@@ -49,24 +69,24 @@
   async function infiniteStart(mode='practice'){
     const pro=isPro();
     if(mode==='practice'&&!pro&&freePacksLeft()===0){
-      toast?.('Your 3 free packs are used — unlock infinite practice with Pro ✦');
-      return typeof requirePro==='function'?requirePro(()=>infiniteStart(mode)):originalStart(mode);
+      toast?.('Your 3 free packs are complete — unlock unlimited 15-question packs with Pro ✦');
+      return launchPro();
     }
     if(['lightning','boss'].includes(mode)&&!pro){
       return typeof requirePro==='function'?requirePro(()=>infiniteStart(mode)):originalStart(mode);
     }
     if(!['practice','lightning','boss'].includes(mode))return originalStart(mode);
     try{
-      toast?.(mode==='boss'?'Summoning this week’s boss…':mode==='practice'&&!pro?'Generating your 15-question free pack…':'Generating a fresh challenge pack…');
+      toast?.(mode==='boss'?'Summoning this week’s boss…':mode==='practice'?'Generating your fresh 15-question pack…':'Generating a fresh challenge pack…');
       if(mode==='boss') daily=await buildPack(2,'boss');
-      else if(mode==='practice'&&!pro) daily=await buildPack(3,'free-pack');
+      else if(mode==='practice') daily=await buildPack(3,pro?'pro-pack':'free-pack');
       else daily=await fetchFresh(mode);
       if(mode==='practice'&&!pro){
         const left=consumeFreePack();
-        toast?.(left?`${left} free 15-question pack${left===1?'':'s'} left`:'That was free pack #3 — Pro unlocks infinite play ✦');
+        toast?.(left?`${left} free 15-question pack${left===1?'':'s'} left`:'Free pack #3 complete — Go Pro for unlimited 15-question packs ✦');
       }
       clearInterval(timer);
-      state={round:0,correct:0,score:0,marks:[],mode,start:Date.now(),cats:{},roundLimit:mode==='practice'&&!pro?FREE_PACK_ROUNDS:daily.length};
+      state={round:0,correct:0,score:0,marks:[],mode,start:Date.now(),cats:{},roundLimit:mode==='practice'?FREE_PACK_ROUNDS:daily.length};
       confidence=1;
       window.totalRounds=()=>state.roundLimit||daily.length||5;
       show('game');
@@ -86,6 +106,6 @@
   if(practice)practice.onclick=()=>infiniteStart('practice');
   if(lightning)lightning.onclick=()=>infiniteStart('lightning');
   if(boss)boss.onclick=()=>infiniteStart('boss');
-  if(again)again.onclick=()=>infiniteStart('practice');
+  if(again)again.onclick=()=>isPro()||freePacksLeft()>0?infiniteStart('practice'):launchPro();
   updateFreePackUI();
 })();
