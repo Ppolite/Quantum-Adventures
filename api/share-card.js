@@ -9,16 +9,23 @@ module.exports=async(req,res)=>{
   const subtitle=kind==='stats'?`Today in Beat AI`:kind==='challenge'?`${name} says: beat ${score}/${total}`:`${name} scored ${score}/${total}`;
   const grid=marks||Array.from({length:total},(_,i)=>i<score?'🟩':'⬛').join('');
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
-  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient><radialGradient id="r"><stop stop-color="${b}" stop-opacity=".35"/><stop offset="1" stop-color="#05070b" stop-opacity="0"/></radialGradient></defs>
-  <rect width="1200" height="630" fill="#070a10"/><circle cx="920" cy="120" r="420" fill="url(#r)"/><rect x="56" y="56" width="1088" height="518" rx="38" fill="#0e1420" stroke="#293448" stroke-width="2"/>
-  <text x="90" y="118" fill="${b}" font-family="Arial,sans-serif" font-size="28" font-weight="800">BEAT AI • SOCIAL CHALLENGE</text>
-  <text x="90" y="205" fill="#fff" font-family="Arial,sans-serif" font-size="62" font-weight="900">${esc(title)}</text>
-  <text x="90" y="260" fill="#b6c0d2" font-family="Arial,sans-serif" font-size="30" font-weight="700">${esc(subtitle)}</text>
-  <text x="90" y="380" fill="url(#g)" font-family="Arial,sans-serif" font-size="118" font-weight="900">${score}/${total}</text>
-  <text x="90" y="442" fill="#fff" font-family="Arial,sans-serif" font-size="38">${grid}</text>
-  <text x="90" y="505" fill="#b6c0d2" font-family="Arial,sans-serif" font-size="26">🔥 ${streak} day streak   •   🧠 ${rating} Arena   •   ${pct}%</text>
-  <rect x="760" y="402" width="320" height="88" rx="20" fill="url(#g)"/><text x="920" y="458" text-anchor="middle" fill="#05070b" font-family="Arial,sans-serif" font-size="30" font-weight="900">PLAY AT BEATAI.GAMES</text>
-  <text x="90" y="548" fill="#718096" font-family="Arial,sans-serif" font-size="22">Think you're smarter than the machine?</text>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient>
+    <radialGradient id="r"><stop stop-color="${b}" stop-opacity=".35"/><stop offset="1" stop-color="#05070b" stop-opacity="0"/></radialGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="10" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1200" height="630" fill="#070a10"/>
+  <circle cx="930" cy="140" r="430" fill="url(#r)"/>
+  <rect x="56" y="46" width="1088" height="538" rx="38" fill="#0e1420" stroke="#293448" stroke-width="2"/>
+  <text x="90" y="108" fill="${b}" font-family="Arial,sans-serif" font-size="28" font-weight="800">BEAT AI • SOCIAL CHALLENGE</text>
+  <text x="90" y="192" fill="#fff" font-family="Arial,sans-serif" font-size="60" font-weight="900">${esc(title)}</text>
+  <text x="90" y="246" fill="#b6c0d2" font-family="Arial,sans-serif" font-size="30" font-weight="700">${esc(subtitle)}</text>
+  <text x="90" y="360" fill="url(#g)" font-family="Arial,sans-serif" font-size="112" font-weight="900" filter="url(#glow)">${score}/${total}</text>
+  <text x="90" y="420" fill="#fff" font-family="Arial,sans-serif" font-size="38">${grid}</text>
+  <text x="90" y="472" fill="#b6c0d2" font-family="Arial,sans-serif" font-size="25">🔥 ${streak} day streak   •   🧠 ${rating} Arena   •   ${pct}%</text>
+  <text x="90" y="510" fill="#718096" font-family="Arial,sans-serif" font-size="22">Think you're smarter than the machine?</text>
+  <rect x="90" y="528" width="1020" height="72" rx="18" fill="url(#g)"/>
+  <text x="600" y="574" text-anchor="middle" fill="#05070b" font-family="Arial,sans-serif" font-size="28" font-weight="900">PLAY AT BEATAI.GAMES</text>
   </svg>`;
   res.status(200).setHeader('Content-Type','image/svg+xml; charset=utf-8').setHeader('Cache-Control','public, max-age=300, s-maxage=86400').send(svg);
 };
