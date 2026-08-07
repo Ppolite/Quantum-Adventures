@@ -1,6 +1,9 @@
 (()=>{
   const SITE='https://quantum-adventures.vercel.app';
   const byId=id=>document.getElementById(id);
+  if(!document.querySelector('link[href="/social.css"]')){
+    const link=document.createElement('link');link.rel='stylesheet';link.href='/social.css';document.head.appendChild(link);
+  }
 
   function referralId(){
     let id=localStorage.getItem('beatAIReferralId');
