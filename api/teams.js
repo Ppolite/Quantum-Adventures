@@ -38,10 +38,11 @@ module.exports=async(req,res)=>{
     const b=req.body||{},action=normalize(b.action);
 
     if(action==='create'){
-      const company=normalize(b.company),adminName=normalize(b.adminName||'Team Admin'),size=normalize(b.size||'2–10');
+      const company=normalize(b.company),adminName=normalize(b.adminName||'Team Admin'),size=normalize(b.size||'2–10'),departmentName=normalize(b.departmentName);
       if(!company)return json(res,400,{error:'Company name required'});
       const teamId=id('team'),adminId=id('member'),invite=code();
-      const workspace={id:teamId,company,size,season:1,inviteCode:invite,createdAt:now(),updatedAt:now(),billingStatus:'trial',departments:[],members:[{id:adminId,name:adminName,role:'admin',departmentId:null,points:0,correct:0,total:0,joinedAt:now()}],weekly:{title:'Weekly AI Challenge',questions:15,endsAt:now()+7*86400000,crown:null}};
+      const firstDepartment=departmentName?{id:id('dept'),name:departmentName,points:0,members:1}:null;
+      const workspace={id:teamId,company,size,season:1,inviteCode:invite,createdAt:now(),updatedAt:now(),billingStatus:'trial',billingSeatCount:0,departments:firstDepartment?[firstDepartment]:[],members:[{id:adminId,name:adminName,role:'admin',departmentId:firstDepartment?.id||null,points:0,correct:0,total:0,joinedAt:now()}],weekly:{title:'Weekly AI Challenge',questions:15,endsAt:now()+7*86400000,crown:null}};
       await save(workspace);await setJson(inviteKey(invite),teamId);
       const session=sign({teamId,memberId:adminId,role:'admin',exp:now()+30*86400000});
       return json(res,201,{workspace:publicWorkspace(workspace),session});
@@ -82,7 +83,10 @@ module.exports=async(req,res)=>{
     if(action==='recordScore'){
       const session=authorize(req,teamId);if(!session)return json(res,401,{error:'Unauthorized'});
       const member=w.members.find(m=>m.id===session.memberId);if(!member)return json(res,404,{error:'Member not found'});
-      const correct=Math.max(0,Math.min(15,Number(b.correct)||0)),total=Math.max(1,Math.min(15,Number(b.total)||15)),points=Math.max(0,Number(b.points)||correct*100);
+      const total=Math.max(1,Math.min(15,Math.floor(Number(b.total)||15)));
+      const correct=Math.max(0,Math.min(total,Math.floor(Number(b.correct)||0)));
+      const submitted=Math.max(0,Number(b.points)||correct*100);
+      const points=Math.min(total*200,Math.round(submitted));
       member.correct+=correct;member.total+=total;member.points+=points;member.lastPlayedAt=now();
       if(correct===total)w.weekly.crown={memberId:member.id,name:member.name,score:`${correct}/${total}`,at:now()};
       await save(w);return json(res,200,{workspace:publicWorkspace(w)});
