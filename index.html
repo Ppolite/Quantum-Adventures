@@ -16,6 +16,7 @@
   <meta name="twitter:title" content="Beat AI — Think you're smarter than AI?">
   <meta name="twitter:description" content="Five fast challenges. One cocky machine. Can you beat today's AI?">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/social.css">
 </head>
 <body>
 <div class="app">
@@ -54,11 +55,11 @@
     <button class="primary" id="play">PLAY TODAY'S 5 →</button>
     <div id="status" class="muted centered small">Loading today's challenge…</div>
 
-    <div class="section-title"><h3>Choose your poison</h3><small>More ways to lose to a toaster</small></div>
+    <div class="section-title"><h3>Choose your poison</h3><small>Fresh packs every run</small></div>
     <div class="modegrid">
-      <button class="mode" data-promode id="lightningBtn"><b>⚡ Lightning</b><small>PRO · 10 seconds per question.</small></button>
-      <button class="mode boss" data-promode id="bossBtn"><b>👹 Weekly Boss</b><small>PRO · 10 brutal rounds.</small></button>
-      <button class="mode" data-promode id="practiceBtn"><b>🥊 Unlimited Practice</b><small>PRO · Keep playing after the daily five.</small></button>
+      <button class="mode" data-promode id="lightningBtn"><b>⚡ Lightning</b><small>PRO · Fresh AI pack, 10 seconds each.</small></button>
+      <button class="mode boss" data-promode id="bossBtn"><b>👹 Weekly Boss</b><small>PRO · 10 fresh adaptive rounds.</small></button>
+      <button class="mode" data-promode id="practiceBtn"><b>🥊 Infinite Practice</b><small>PRO · New AI-generated questions every run.</small></button>
       <button class="mode" id="friendBtn"><b>👥 Friend Duel</b><small>Challenge somebody to beat your score.</small></button>
     </div>
 
@@ -72,10 +73,10 @@
     <div class="procard" id="proCard">
       <span class="badge">HUMAN RESISTANCE</span>
       <h3 id="proTitle">Join Beat AI Pro</h3>
-      <p class="muted" id="proCopy">Unlimited battles, Lightning, Boss Battles, no ads, advanced stats and exclusive cosmetics.</p>
+      <p class="muted" id="proCopy">Infinite battles, Lightning, Boss Battles, no ads, advanced stats and exclusive cosmetics.</p>
       <div class="progrid">
-        <div class="perk">✓ Unlimited practice</div><div class="perk">✓ Lightning Mode</div>
-        <div class="perk">✓ Weekly Boss</div><div class="perk">✓ Advanced stats</div>
+        <div class="perk">✓ Infinite AI practice</div><div class="perk">✓ Lightning Mode</div>
+        <div class="perk">✓ Weekly Boss</div><div class="perk">✓ Adaptive difficulty</div>
         <div class="perk">✓ No ads</div><div class="perk">✓ Exclusive cosmetics</div>
       </div>
       <button class="primary" id="upgradeBtn">GO PRO — $5.99/MONTH</button>
@@ -114,7 +115,7 @@
       <div id="referralNote" class="muted small centered">Your challenge link includes a private referral code so future rewards can credit the inviter.</div>
     </div>
 
-    <button id="again" class="secondary full gap-top">ONE MORE PRACTICE ROUND</button>
+    <button id="again" class="secondary full gap-top">GENERATE ANOTHER FRESH PACK</button>
     <div class="card board"><div class="type">Today's leaderboard</div><div id="leaderboard"></div></div>
     <div class="section-title"><h3>Skill breakdown</h3><small id="skillSummary">learning you…</small></div><div class="card" id="skills"></div>
     <div class="section-title"><h3>Achievements</h3><small id="achievementCount">0 unlocked</small></div><div class="achievement-grid" id="achievements"></div>
@@ -127,6 +128,7 @@
 <div class="modal" id="rewardModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Mystery crate</div><h2>You earned a drop</h2><div class="reward" id="rewardEmoji">🎁</div><h3 class="centered" id="rewardName">Neon Brain</h3><p class="muted centered" id="rewardDesc">A cosmetic reward for surviving five battles.</p><button class="primary" data-close>CLAIM IT</button></div></div>
 <div class="toast" id="toast"></div>
 <script src="/app.js"></script>
+<script src="/infinite-replay.js"></script>
 <script src="/social.js"></script>
 </body>
 </html>
