@@ -33,14 +33,14 @@ The existing consumer Pro billing variables remain unchanged.
 - Storage credentials and Stripe keys stay server-side.
 - Private Stripe customer/subscription identifiers are stripped from workspace responses.
 
+## What becomes live after configuration
+
+- Multiple browsers can join the same company league through one invite link.
+- Completed Beat AI runs automatically write member points into the shared company leaderboard.
+- Department totals are calculated server-side from member scores.
+- Admins can add departments, rotate invite codes, and start per-seat Teams checkout.
+- Workspace state persists across browsers and devices because the source of truth is server-side.
+
 ## Production hardening after first paid pilots
 
 Before larger deployments, add verified email/SSO identity, Stripe webhook subscription reconciliation, rate limiting/abuse controls, audit logs, and a relational database schema if Teams usage outgrows the Redis document model.
-
-## What is live after these variables are configured
-
-- Multiple browsers can join the same company league via invite link.
-- Member scores write back to the shared team leaderboard automatically after a completed Beat AI run.
-- Department totals are calculated server-side from member scores.
-- Admins can add departments, rotate invite codes, and start per-seat Teams checkout.
-- Workspace state survives browser refreshes and devices because the source of truth is server-side.
