@@ -1,49 +1,61 @@
 (()=>{
   const $=id=>document.getElementById(id);
-  const key='beatAITeamWorkspace';
+  const sessionKey='beatAITeamSession',workspaceKey='beatAITeamWorkspace';
   const modal=$('companyModal');
-  const open=()=>{hydrate();modal?.classList.add('open')};
+  const getSession=()=>localStorage.getItem(sessionKey)||'';
+  const setSession=v=>v?localStorage.setItem(sessionKey,v):localStorage.removeItem(sessionKey);
+  const loadCache=()=>{try{return JSON.parse(localStorage.getItem(workspaceKey)||'null')}catch{return null}};
+  const cache=w=>w&&localStorage.setItem(workspaceKey,JSON.stringify(w));
   const close=()=>modal?.classList.remove('open');
-  const load=()=>{try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}};
-  const save=v=>localStorage.setItem(key,JSON.stringify(v));
-  const code=()=>Math.random().toString(36).slice(2,8).toUpperCase();
-  const sampleMembers=['Avery','Jordan','Maya','Chris','Taylor','Morgan'];
   const linkedinCopy=()=>`We’re testing Beat AI for Teams — private company leagues, department battles, weekly AI challenges and team leaderboards that make AI literacy feel like a competition instead of another training module.\n\nWould your team play this?\n\nhttps://beatai.games`;
-
-  function createWorkspace(){
-    const company=($('companyName')?.value||'').trim();
-    const size=$('companySize')?.value||'';
-    const dept=($('companyDepartment')?.value||'').trim()||'General';
-    if(!company){window.toast?.('Add a company or team name');return;}
-    const ws={company,size,inviteCode:code(),season:1,department:dept,createdAt:Date.now(),members:[{name:'You',dept,score:980,weekly:1240},{name:'Maya',dept:'Marketing',score:944,weekly:1160},{name:'Jordan',dept:'Operations',score:921,weekly:1080}],departments:[dept,'Marketing','Operations'].filter((v,i,a)=>a.indexOf(v)===i),challenge:{title:'Human vs Machine: Week 1',rounds:15,endsIn:'4d 8h',reward:'Company Crown 👑'}};
-    save(ws);renderWorkspace(ws);window.toast?.('Company league created 🏢');
+  const authHeaders=()=>({'Content-Type':'application/json',...(getSession()?{Authorization:`Bearer ${getSession()}`}:{})});
+  async function api(body){const r=await fetch('/api/teams',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});const d=await r.json();if(!r.ok)throw new Error(d.error||'Teams request failed');return d}
+  async function refreshWorkspace(){const ws=loadCache();if(!ws?.id||!getSession())return ws;const r=await fetch('/api/teams?teamId='+encodeURIComponent(ws.id),{headers:{Authorization:`Bearer ${getSession()}`}});const d=await r.json();if(r.ok&&d.workspace){cache(d.workspace);renderWorkspace(d.workspace);return d.workspace}return ws}
+  function memberDept(ws,m){return ws.departments?.find(d=>d.id===m.departmentId)?.name||'Unassigned'}
+  function workspaceRole(ws){try{const raw=getSession().split('.')[0];return JSON.parse(atob(raw.replace(/-/g,'+').replace(/_/g,'/'))).role||'member'}catch{return'member'}}
+  async function createWorkspace(){
+    const company=($('companyName')?.value||'').trim(),size=$('companySize')?.value||'',dept=($('companyDepartment')?.value||'').trim();
+    if(!company)return window.toast?.('Add a company or team name');
+    try{
+      const d=await api({action:'create',company,size,adminName:'You'});setSession(d.session);cache(d.workspace);
+      if(dept)await addDepartment(dept);else renderWorkspace(d.workspace);
+      window.toast?.('Private company league is live 🏢');
+    }catch(e){window.toast?.(e.message)}
   }
-  function addDepartment(){const ws=load();if(!ws)return;const d=($('newDepartment')?.value||'').trim();if(!d)return;ws.departments=ws.departments||[];if(!ws.departments.includes(d))ws.departments.push(d);save(ws);renderWorkspace(ws);$('newDepartment').value='';}
-  function inviteCopy(){const ws=load();if(!ws)return;const text=`Join ${ws.company} on Beat AI for Teams. Invite code: ${ws.inviteCode}\nhttps://beatai.games`;
-    navigator.clipboard?.writeText(text).then(()=>window.toast?.('Team invite copied')).catch(()=>window.toast?.(text));}
-  function simulateInvite(){const ws=load();if(!ws)return;const n=sampleMembers[(ws.members?.length||0)%sampleMembers.length];ws.members.push({name:n,dept:ws.departments[(ws.members.length)%ws.departments.length]||'General',score:880+Math.floor(Math.random()*120),weekly:900+Math.floor(Math.random()*400)});save(ws);renderWorkspace(ws);window.toast?.(`${n} joined the league`);}
+  async function joinWorkspace(inviteCode){
+    const name=prompt('Your name for the company leaderboard:');if(!name)return;
+    const departmentName=prompt('Department (optional):')||'';
+    try{const d=await api({action:'join',inviteCode,name,departmentName});setSession(d.session);cache(d.workspace);renderWorkspace(d.workspace);modal?.classList.add('open');window.toast?.(`Joined ${d.workspace.company} ⚔️`)}catch(e){window.toast?.(e.message)}
+  }
+  async function addDepartment(forced){const ws=loadCache();if(!ws)return;const name=(forced||$('newDepartment')?.value||'').trim();if(!name)return;try{const d=await api({action:'addDepartment',teamId:ws.id,name});cache(d.workspace);renderWorkspace(d.workspace);if($('newDepartment'))$('newDepartment').value=''}catch(e){window.toast?.(e.message)}}
+  async function rotateInvite(){const ws=loadCache();if(!ws)return;try{const d=await api({action:'rotateInvite',teamId:ws.id});cache(d.workspace);renderWorkspace(d.workspace);window.toast?.('New invite code created')}catch(e){window.toast?.(e.message)}}
+  async function inviteCopy(){const ws=await refreshWorkspace();if(!ws)return;const url=`https://beatai.games/?team_invite=${encodeURIComponent(ws.inviteCode)}`;const text=`Join ${ws.company} on Beat AI for Teams.\n${url}`;try{await navigator.clipboard.writeText(text);window.toast?.('Team invite copied')}catch{window.toast?.(text)}}
+  async function teamCheckout(){const ws=loadCache();if(!ws)return;const raw=prompt('How many seats?',String(Math.max(10,ws.members?.length||10)));if(raw===null)return;try{const r=await fetch('/api/team-checkout',{method:'POST',headers:authHeaders(),body:JSON.stringify({teamId:ws.id,seats:Number(raw)||10})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Checkout failed');location.href=d.url}catch(e){window.toast?.(e.message)}}
+  async function recordLatestRun(){
+    const ws=loadCache();if(!ws?.id||!getSession())return;
+    try{const marker=`${state?.start||0}:${state?.correct||0}`;if(sessionStorage.getItem('beatAITeamRunSynced')===marker)return;sessionStorage.setItem('beatAITeamRunSynced',marker);const d=await api({action:'recordScore',teamId:ws.id,correct:state.correct,total:(state.roundLimit||state.marks?.length||5),points:Math.max(0,Math.round(state.score||0))});cache(d.workspace)}catch{}
+  }
   function renderWorkspace(ws){
-    const box=$('companyWorkspace');if(!box)return;
-    box.hidden=false;
-    $('companySetup')?.setAttribute('hidden','');
-    $('workspaceCompany').textContent=ws.company;
-    $('workspaceMeta').textContent=`Season ${ws.season} · ${ws.members.length} members · Invite ${ws.inviteCode}`;
-    $('workspaceChallenge').innerHTML=`<b>${ws.challenge.title}</b><span>${ws.challenge.rounds} questions · ends ${ws.challenge.endsIn}</span><strong>${ws.challenge.reward}</strong>`;
-    const deptTotals=(ws.departments||[]).map(d=>{const m=ws.members.filter(x=>x.dept===d);return{dept:d,score:m.reduce((a,x)=>a+(x.weekly||0),0),members:m.length}}).sort((a,b)=>b.score-a.score);
-    $('departmentBoard').innerHTML=deptTotals.map((d,i)=>`<div class="team-row"><span>${i===0?'👑':'#'+(i+1)} <b>${d.dept}</b><small>${d.members} member${d.members===1?'':'s'}</small></span><strong>${d.score.toLocaleString()} pts</strong></div>`).join('');
-    $('teamBoard').innerHTML=[...ws.members].sort((a,b)=>b.weekly-a.weekly).map((m,i)=>`<div class="team-row"><span>${i===0?'🔥':'#'+(i+1)} <b>${m.name}</b><small>${m.dept}</small></span><strong>${m.weekly.toLocaleString()}</strong></div>`).join('');
-    $('companyInterestNote').textContent=`${ws.company} league ready · invite code ${ws.inviteCode}`;
-    $('companyInterestBtn').textContent='OPEN COMPANY LEAGUE →';
+    const box=$('companyWorkspace');if(!box)return;box.hidden=false;$('companySetup')?.setAttribute('hidden','');
+    $('workspaceCompany').textContent=ws.company;$('workspaceMeta').textContent=`Season ${ws.season||1} · ${ws.members?.length||0} members · Invite ${ws.inviteCode} · ${ws.billingStatus||'trial'}`;
+    const weekly=ws.weekly||{};$('workspaceChallenge').innerHTML=`<b>${weekly.title||'Weekly AI Challenge'}</b><span>${weekly.questions||15} questions · shared company competition</span><strong>${weekly.crown?`👑 ${weekly.crown.name} ${weekly.crown.score}`:'Company Crown 👑'}</strong>`;
+    $('departmentBoard').innerHTML=(ws.departments||[]).map((d,i)=>`<div class="team-row"><span>${i===0?'👑':'#'+(i+1)} <b>${d.name}</b><small>${d.members||0} member${d.members===1?'':'s'}</small></span><strong>${(d.points||0).toLocaleString()} pts</strong></div>`).join('')||'<div class="muted small">Add departments to start the rivalry.</div>';
+    $('teamBoard').innerHTML=(ws.members||[]).map((m,i)=>`<div class="team-row"><span>${i===0?'🔥':'#'+(i+1)} <b>${m.name}</b><small>${memberDept(ws,m)} · ${m.role}</small></span><strong>${(m.points||0).toLocaleString()}</strong></div>`).join('');
+    $('companyInterestNote').textContent=`${ws.company} league live · invite ${ws.inviteCode}`;$('companyInterestBtn').textContent='OPEN COMPANY LEAGUE →';
+    const actions=$('companyWorkspace')?.querySelector('.workspace-actions');if(actions){
+      const admin=workspaceRole(ws)==='admin';
+      actions.innerHTML=`<button class="secondary" id="copyTeamInvite">COPY TEAM INVITE</button>${admin?'<button class="secondary" id="rotateTeamInvite">ROTATE CODE</button><button class="secondary" id="teamBillingBtn">MANAGE TEAM PLAN</button>':''}`;
+      $('copyTeamInvite')?.addEventListener('click',inviteCopy);$('rotateTeamInvite')?.addEventListener('click',rotateInvite);$('teamBillingBtn')?.addEventListener('click',teamCheckout);
+      const add=$('addDepartmentBtn');if(add)add.hidden=!admin;const input=$('newDepartment');if(input)input.hidden=!admin;
+    }
   }
-  function hydrate(){const ws=load();if(ws){renderWorkspace(ws);$('companySetup')?.setAttribute('hidden','')}else{$('companySetup')?.removeAttribute('hidden');if($('companyWorkspace'))$('companyWorkspace').hidden=true}}
+  async function hydrate(){const ws=loadCache();if(ws){renderWorkspace(ws);await refreshWorkspace()}else{$('companySetup')?.removeAttribute('hidden');if($('companyWorkspace'))$('companyWorkspace').hidden=true}}
+  function open(){hydrate();modal?.classList.add('open')}
 
-  $('companyInterestBtn')?.addEventListener('click',open);
-  $('saveCompanyInterest')?.addEventListener('click',createWorkspace);
+  $('companyInterestBtn')?.addEventListener('click',open);$('saveCompanyInterest')?.addEventListener('click',createWorkspace);
   $('copyCompanyLinkedIn')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(linkedinCopy());window.toast?.('LinkedIn post copied')}catch{window.toast?.('Could not copy post')}});
-  $('copyTeamInvite')?.addEventListener('click',inviteCopy);
-  $('simulateTeamJoin')?.addEventListener('click',simulateInvite);
-  $('addDepartmentBtn')?.addEventListener('click',addDepartment);
-  modal?.querySelector('[data-close]')?.addEventListener('click',close);
-  modal?.addEventListener('click',e=>{if(e.target===modal)close()});
+  $('addDepartmentBtn')?.addEventListener('click',()=>addDepartment());modal?.querySelector('[data-close]')?.addEventListener('click',close);modal?.addEventListener('click',e=>{if(e.target===modal)close()});
+  const result=$('result');if(result)new MutationObserver(()=>{if(result.classList.contains('active'))recordLatestRun()}).observe(result,{attributes:true,attributeFilter:['class']});
+  const invite=new URLSearchParams(location.search).get('team_invite');if(invite&&!getSession())setTimeout(()=>joinWorkspace(invite),500);
   hydrate();
 })();
