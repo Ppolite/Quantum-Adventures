@@ -35,10 +35,11 @@ for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=
 assert(practice.includes('OPENAI_API_KEY'),'practice generator missing OpenAI integration');
 new Function('require','module','exports',practice);
 
-for(const token of ['beatAITeamSession','beatAITeamWorkspace','/api/teams','action:\'create\'','action:\'join\'','action:\'recordScore\'','team_invite','/api/team-checkout','MANAGE TEAM PLAN','recordLatestRun','copyTeamInvite','rotateInvite','addDepartment','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing persistent Teams client behavior: ${token}`);
+for(const token of ['beatAITeamSession','beatAITeamWorkspace','/api/teams','action:\'create\'','action:\'join\'','action:\'recordScore\'','team_invite','/api/team-checkout','UPGRADE TEAM PLAN','How many seats? (10 minimum)','recordLatestRun','copyTeamInvite','rotateInvite','addDepartment','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing persistent Teams client behavior: ${token}`);
 for(const token of ['action===\'create\'','action===\'join\'','action===\'addDepartment\'','action===\'rotateInvite\'','action===\'removeMember\'','action===\'recordScore\'','Admin required','weekly.crown'])assert(teamsApi.includes(token),`missing Teams API behavior: ${token}`);
 for(const token of ['KV_REST_API_URL','UPSTASH_REDIS_REST_URL','TEAM_AUTH_SECRET','createHmac','timingSafeEqual','publicWorkspace'])assert(teamStore.includes(token),`missing Teams store/security behavior: ${token}`);
-for(const token of ['STRIPE_SECRET_KEY','STRIPE_TEAM_PRICE_ID','subscription','metadata[team_id]','line_items[0][quantity]'])assert(teamCheckout.includes(token),`missing Teams billing behavior: ${token}`);
+for(const token of ['STRIPE_SECRET_KEY','STRIPE_TEAM_PRICE_ID','teamPriceId.startsWith(\'price_\')','MIN_TEAM_SEATS=10','line_items[0][quantity]','metadata[team_id]','metadata[tier]','subscription_data[metadata][team_id]','client_reference_id'])assert(teamCheckout.includes(token),`missing Teams billing behavior: ${token}`);
+assert(!teamCheckout.includes('STRIPE_PRO_PRICE_ID'),'Teams checkout must never use consumer Pro price');
 for(const source of [teamsApi,teamStore,teamCheckout])new Function('require','module','exports',source);
 
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
