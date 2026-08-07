@@ -36,3 +36,11 @@ The existing consumer Pro billing variables remain unchanged.
 ## Production hardening after first paid pilots
 
 Before larger deployments, add verified email/SSO identity, Stripe webhook subscription reconciliation, rate limiting/abuse controls, audit logs, and a relational database schema if Teams usage outgrows the Redis document model.
+
+## What is live after these variables are configured
+
+- Multiple browsers can join the same company league via invite link.
+- Member scores write back to the shared team leaderboard automatically after a completed Beat AI run.
+- Department totals are calculated server-side from member scores.
+- Admins can add departments, rotate invite codes, and start per-seat Teams checkout.
+- Workspace state survives browser refreshes and devices because the source of truth is server-side.
