@@ -32,6 +32,9 @@ for(const route of ['/api/checkout','/api/billing-status','/api/billing-portal',
 new Function(app);new Function(replay);new Function(teams);new Function(social);
 
 for(const token of ['/api/practice','beatAIRecentQuestions','difficulty()','avoid:recent()','crypto?.randomUUID'])assert(replay.includes(token),`missing infinite replay behavior: ${token}`);
+for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','freePacksLeft','consumeFreePack','Your 3 free packs are used','That was free pack #3'])assert(replay.includes(token),`missing three-free-pack behavior: ${token}`);
+assert(replay.includes("mode==='practice'&&!pro&&freePacksLeft()===0"),'practice paywall is not enforced after free packs');
+assert(replay.includes("if(mode==='practice'&&!pro)"),'free practice consumption is missing');
 assert(practice.includes('OPENAI_API_KEY'),'practice generator missing OpenAI integration');
 assert(practice.includes('Avoid repeating or closely paraphrasing'),'practice generator missing dedupe prompt');
 assert(practice.includes('Target difficulty 1-5'),'practice generator missing adaptive difficulty');
