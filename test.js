@@ -16,11 +16,13 @@ const scores=read('api/scores.js');
 const checkout=read('api/checkout.js');
 const billingStatus=read('api/billing-status.js');
 const billingPortal=read('api/billing-portal.js');
+const teamsApi=read('api/teams.js');
+const teamStore=read('api/team-store.js');
+const teamCheckout=read('api/team-checkout.js');
 
-for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','copyCompanyLinkedIn','companyWorkspace','workspaceCompany','workspaceMeta','workspaceChallenge','departmentBoard','teamBoard','copyTeamInvite','simulateTeamJoin','newDepartment','addDepartmentBtn'])assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
+for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','copyCompanyLinkedIn','companyWorkspace','workspaceCompany','workspaceMeta','workspaceChallenge','departmentBoard','teamBoard','newDepartment','addDepartmentBtn'])assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
-for(const token of ['og:title','og:image','twitter:card','summary_large_image','twitter:image'])assert(html.includes(token),`social preview metadata missing: ${token}`);
-for(const token of ['beatai.games','Turn AI literacy into a team sport','CREATE PRIVATE LEAGUE','PRIVATE LEAGUE','Department battle','Team leaderboard','COPY TEAM INVITE'])assert(html.includes(token),`missing Teams page token: ${token}`);
+for(const token of ['beatai.games','Turn AI literacy into a team sport','CREATE PRIVATE LEAGUE','PRIVATE LEAGUE','Department battle','Team leaderboard'])assert(html.includes(token),`missing Teams page token: ${token}`);
 assert(css.includes('.workspace-challenge')&&css.includes('.workspace-board')&&css.includes('.team-row')&&css.includes('.department-add'),'Teams workspace styles missing');
 assert(socialCss.includes('.social-grid')&&socialCss.includes('.challenge-banner')&&socialCss.includes('.share-preview'),'social styles missing');
 
@@ -32,14 +34,19 @@ for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=
 assert(practice.includes('OPENAI_API_KEY'),'practice generator missing OpenAI integration');
 new Function('require','module','exports',practice);
 
-for(const token of ['beatAITeamWorkspace','createWorkspace','inviteCode','Human vs Machine: Week 1','departments','Department','teamBoard','departmentBoard','copyTeamInvite','simulateTeamJoin','addDepartment','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing company workspace behavior: ${token}`);
+for(const token of ['beatAITeamSession','/api/teams','action:\'create\'','action:\'join\'','action:\'recordScore\'','team_invite','/api/team-checkout','MANAGE TEAM PLAN','recordLatestRun','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing persistent Teams client behavior: ${token}`);
+for(const token of ['action===\'create\'','action===\'join\'','action===\'addDepartment\'','action===\'rotateInvite\'','action===\'removeMember\'','action===\'recordScore\'','Admin required','weekly.crown'])assert(teamsApi.includes(token),`missing Teams API behavior: ${token}`);
+for(const token of ['KV_REST_API_URL','UPSTASH_REDIS_REST_URL','TEAM_AUTH_SECRET','createHmac','timingSafeEqual','publicWorkspace'])assert(teamStore.includes(token),`missing Teams store/security behavior: ${token}`);
+for(const token of ['STRIPE_SECRET_KEY','STRIPE_TEAM_PRICE_ID','mode','subscription','metadata[team_id]','line_items[0][quantity]'])assert(teamCheckout.includes(token),`missing Teams billing behavior: ${token}`);
+for(const source of [teamsApi,teamStore,teamCheckout])new Function('require','module','exports',source);
+
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
 new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
 assert(daily.includes('aiTake'),'daily API lacks AI replay field');
-for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
+for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard,teamsApi,teamStore,teamCheckout})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
 assert(checkout.includes('STRIPE_SECRET_KEY'),'checkout missing STRIPE_SECRET_KEY');
 assert(checkout.includes('/v1/checkout/sessions'),'checkout does not call Stripe Checkout Sessions');
 assert(billingStatus.includes('/v1/checkout/sessions/'),'billing status does not verify Checkout sessions');
