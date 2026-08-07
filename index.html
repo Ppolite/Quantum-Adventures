@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
   <meta name="theme-color" content="#090b10">
   <title>Beat AI — Daily Human vs Machine Challenge</title>
-  <meta name="description" content="Five fast challenges. One cocky machine. Beat today's AI, protect your streak, and challenge your friends.">
+  <meta name="description" content="Five fast challenges. One cocky machine. Beat today's AI, protect your streak, challenge friends, or launch a private company league.">
   <link rel="canonical" href="https://quantum-adventures.vercel.app/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Beat AI">
   <meta property="og:title" content="Beat AI — Think you're smarter than AI?">
-  <meta property="og:description" content="Play today's five-round Human vs Machine challenge and send your score to a friend.">
+  <meta property="og:description" content="Play today's Human vs Machine challenge, send your score to friends, or bring Beat AI to your team.">
   <meta property="og:url" content="https://quantum-adventures.vercel.app/">
   <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Beat AI — Think you're smarter than AI?">
@@ -83,6 +83,19 @@
       <div class="billing-row"><button class="secondary" id="restoreBtn">RESTORE PURCHASE</button><button class="secondary" id="manageBtn" hidden>MANAGE BILLING</button></div>
     </div>
 
+    <div class="company-card" id="companyCard">
+      <div class="profileline"><div><span class="badge">FOR COMPANIES</span><h3>Turn AI literacy into a team sport.</h3></div><div class="company-icon">🏢</div></div>
+      <p class="muted">Private company leagues, department battles, weekly challenges, team leaderboards and custom AI-awareness tournaments — without another boring training portal.</p>
+      <div class="company-grid">
+        <div class="company-perk"><b>🏆 Private leagues</b><span>Company-only rankings and seasons.</span></div>
+        <div class="company-perk"><b>⚔️ Department battles</b><span>Sales vs. Ops. Engineering vs. Marketing.</span></div>
+        <div class="company-perk"><b>🧠 AI literacy</b><span>Critical thinking and AI-awareness challenges.</span></div>
+        <div class="company-perk"><b>📊 Team insights</b><span>Participation, strengths and challenge analytics.</span></div>
+      </div>
+      <button class="secondary full company-cta" id="companyInterestBtn">BRING BEAT AI TO MY TEAM →</button>
+      <div class="muted small centered" id="companyInterestNote">Great for team building, learning programs, employee engagement and LinkedIn-worthy office rivalries.</div>
+    </div>
+
     <div class="section-title"><h3>Live human feed</h3><small>Right now</small></div>
     <div class="card" id="feed"></div>
   </section>
@@ -121,14 +134,16 @@
     <div class="section-title"><h3>Achievements</h3><small id="achievementCount">0 unlocked</small></div><div class="achievement-grid" id="achievements"></div>
   </section>
 
-  <footer class="footer">Beat AI • quantum-adventures.vercel.app</footer>
+  <footer class="footer">Beat AI • beatai.games</footer>
 </div>
 
 <div class="modal" id="profileModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Human profile</div><h2 id="profileTitle">Novice Human</h2><p class="muted" id="profileMeta"></p><div id="profileContent"></div></div></div>
 <div class="modal" id="rewardModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Mystery crate</div><h2>You earned a drop</h2><div class="reward" id="rewardEmoji">🎁</div><h3 class="centered" id="rewardName">Neon Brain</h3><p class="muted centered" id="rewardDesc">A cosmetic reward for surviving five battles.</p><button class="primary" data-close>CLAIM IT</button></div></div>
+<div class="modal" id="companyModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Beat AI for Teams</div><h2>Start an office rivalry.</h2><p class="muted">Tell us a little about the team. For now, this saves the interest locally and gives you a ready-to-share LinkedIn blurb while the full company admin system is being built.</p><label class="company-label">Company or team name<input class="company-input" id="companyName" maxlength="80" placeholder="Acme Engineering"></label><label class="company-label">Approximate team size<select class="company-input" id="companySize"><option>2–10</option><option>11–50</option><option>51–200</option><option>201–1,000</option><option>1,000+</option></select></label><button class="primary" id="saveCompanyInterest">I'M INTERESTED</button><button class="secondary full gap-top" id="copyCompanyLinkedIn">COPY LINKEDIN POST</button></div></div>
 <div class="toast" id="toast"></div>
 <script src="/app.js"></script>
 <script src="/infinite-replay.js"></script>
+<script src="/teams.js"></script>
 <script src="/social.js"></script>
 </body>
 </html>
