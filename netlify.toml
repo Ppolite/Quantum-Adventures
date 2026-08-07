@@ -1,6 +1,7 @@
 [build]
   publish = "beat-ai"
   command = ""
+  ignore = "exit 0"
 
 [build.environment]
   NODE_VERSION = "20"
