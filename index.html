@@ -1,40 +1,102 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#090b10">
-<title>Beat AI — Daily Human vs Machine Challenge</title>
-<style>
-:root{--bg:#090b10;--card:#121722;--line:#283142;--text:#f6f8fb;--muted:#929caf;--cyan:#34d8f2;--violet:#927cff;--good:#3bd487;--bad:#ff6275;--gold:#ffc857}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -10%,#22264a 0,#090b10 40%);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;min-height:100vh}.app{width:min(100%,620px);margin:auto;padding:18px 18px 54px;min-height:100vh}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;padding:8px 0 12px;background:linear-gradient(#090b10ee,#090b1000);backdrop-filter:blur(12px);z-index:4}.brand{font-size:22px;font-weight:950}.brand span,.glow{background:linear-gradient(90deg,var(--cyan),#fff,var(--violet));-webkit-background-clip:text;color:transparent}.pill,.secondary,.chip{border:1px solid var(--line);background:#10151e;color:#fff;border-radius:999px;padding:9px 13px;font-weight:800}.pill{font-size:12px}.hero{text-align:center;padding:42px 4px 22px}.eyebrow{font-size:11px;letter-spacing:1.8px;text-transform:uppercase;font-weight:900;color:var(--cyan)}h1{font-size:48px;line-height:.96;letter-spacing:-2.7px;margin:12px 0 16px}.hero p,.muted{color:var(--muted);line-height:1.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0}.stat{background:#111620;border:1px solid var(--line);border-radius:17px;padding:13px 6px;text-align:center}.stat b{font-size:18px;display:block}.stat small{font-size:9px;color:var(--muted)}button{font:inherit;cursor:pointer}.primary{width:100%;border:0;border-radius:17px;padding:17px;font-weight:950;background:linear-gradient(100deg,var(--cyan),#d0fbff 48%,#ac9cff);color:#05060a}.screen{display:none}.screen.active{display:block}.card{background:linear-gradient(180deg,#151b26,#0f141c);border:1px solid var(--line);border-radius:24px;padding:20px}.modegrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}.mode{padding:15px;border-radius:18px;border:1px solid var(--line);background:#111722;text-align:left;color:#fff}.mode.locked{opacity:.45}.mode b{display:block;margin-bottom:4px}.mode small{color:var(--muted)}.procard{margin-top:18px;border:1px solid #5d4fb0;background:linear-gradient(145deg,rgba(146,124,255,.16),rgba(52,216,242,.06));border-radius:22px;padding:18px}.procard h3{margin:0 0 6px}.progrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.perk{font-size:12px;background:#111722;border:1px solid var(--line);border-radius:14px;padding:10px}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:rgba(255,200,87,.12);color:var(--gold);font-size:10px;font-weight:900;letter-spacing:.8px}.billing-row{display:flex;gap:8px;margin-top:10px}.billing-row button{flex:1}.footer{text-align:center;color:#5e6878;font-size:11px;margin-top:28px}.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,25px);opacity:0;background:#fff;color:#08090c;padding:11px 16px;border-radius:999px;font-weight:900;font-size:12px;transition:.2s;z-index:20}.toast.show{opacity:1;transform:translate(-50%,0)}@media(max-width:430px){h1{font-size:40px}.stats{grid-template-columns:repeat(2,1fr)}.modegrid,.progrid{grid-template-columns:1fr}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+  <meta name="theme-color" content="#090b10">
+  <title>Beat AI — Daily Human vs Machine Challenge</title>
+  <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
 <div class="app">
-<div class="top"><div class="brand">BEAT <span>AI</span></div><div style="display:flex;gap:7px"><button class="pill" id="profileBtn">🧠 <span id="ratingTop">1000</span></button><button class="pill" id="proBtn">✦ PRO</button></div></div>
-<section id="home" class="screen active">
-<div class="hero"><div class="eyebrow">Daily Human vs Machine Challenge</div><h1>Think you're smarter<br><span class="glow">than AI?</span></h1><p>Five fast challenges. One cocky machine. A few minutes to remind it who still signs the electricity bill.</p></div>
-<div class="stats"><div class="stat"><b id="streak">0 🔥</b><small>DAY STREAK</small></div><div class="stat"><b id="best">—</b><small>BEST</small></div><div class="stat"><b id="rating">1000</b><small>ARENA RATING</small></div><div class="stat"><b id="rank">#—</b><small>GLOBAL RANK</small></div></div>
-<button class="primary" id="play">PLAY TODAY'S 5 →</button>
-<div class="modegrid"><button class="mode locked" data-promode id="lightningBtn"><b>⚡ Lightning</b><small>PRO · 10 seconds per question.</small></button><button class="mode locked" data-promode id="bossBtn"><b>👹 Weekly Boss</b><small>PRO · 10 brutal rounds.</small></button><button class="mode locked" data-promode id="practiceBtn"><b>🥊 Unlimited Practice</b><small>PRO · Keep playing after the daily five.</small></button><button class="mode" id="friendBtn"><b>👥 Friend Duel</b><small>Challenge somebody to beat your score.</small></button></div>
-<div class="procard" id="proCard"><span class="badge">HUMAN RESISTANCE</span><h3 id="proTitle">Join Beat AI Pro</h3><p class="muted" id="proCopy">Unlimited battles, Lightning, Boss Battles, no ads, advanced stats and exclusive cosmetics.</p><div class="progrid"><div class="perk">✓ Unlimited practice</div><div class="perk">✓ Lightning Mode</div><div class="perk">✓ Weekly Boss</div><div class="perk">✓ Advanced stats</div><div class="perk">✓ No ads</div><div class="perk">✓ Exclusive cosmetics</div></div><button class="primary" id="upgradeBtn">GO PRO — $5.99/MONTH</button><div class="billing-row"><button class="secondary" id="restoreBtn">RESTORE PURCHASE</button><button class="secondary" id="manageBtn" style="display:none">MANAGE BILLING</button></div></div>
-</section>
-<div class="footer">Beat AI • quantum-adventures.vercel.app</div>
+  <header class="top">
+    <div class="brand">BEAT <span>AI</span></div>
+    <div class="top-actions">
+      <button class="pill" id="profileBtn">🧠 <span id="ratingTop">1000</span></button>
+      <button class="pill" id="proBtn">✦ PRO</button>
+    </div>
+  </header>
+
+  <section id="home" class="screen active">
+    <div class="hero">
+      <div class="eyebrow">Daily Human vs Machine Challenge</div>
+      <h1>Think you're smarter<br><span class="glow">than AI?</span></h1>
+      <p>Five fast challenges. One cocky machine. A few minutes to remind it who still signs the electricity bill.</p>
+    </div>
+
+    <div class="profileline">
+      <div><div class="titlebadge" id="titleBadge">NOVICE HUMAN</div><b id="personaHome">🤖 Byte — “Try not to embarrass your species.”</b></div>
+      <div class="season" id="seasonText">Season 1</div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="streak">0 🔥</b><small>DAY STREAK</small></div>
+      <div class="stat"><b id="best">—</b><small>BEST</small></div>
+      <div class="stat"><b id="rating">1000</b><small>ARENA RATING</small></div>
+      <div class="stat"><b id="rank">#—</b><small>GLOBAL RANK</small></div>
+    </div>
+
+    <button class="primary" id="play">PLAY TODAY'S 5 →</button>
+    <div id="status" class="muted centered small">Loading today's challenge…</div>
+
+    <div class="section-title"><h3>Choose your poison</h3><small>More ways to lose to a toaster</small></div>
+    <div class="modegrid">
+      <button class="mode" data-promode id="lightningBtn"><b>⚡ Lightning</b><small>PRO · 10 seconds per question.</small></button>
+      <button class="mode boss" data-promode id="bossBtn"><b>👹 Weekly Boss</b><small>PRO · 10 brutal rounds.</small></button>
+      <button class="mode" data-promode id="practiceBtn"><b>🥊 Unlimited Practice</b><small>PRO · Keep playing after the daily five.</small></button>
+      <button class="mode" id="friendBtn"><b>👥 Friend Duel</b><small>Challenge somebody to beat your score.</small></button>
+    </div>
+
+    <div class="impossible">
+      <div class="type">1% Challenge</div>
+      <b>☠️ Today's Impossible Question</b>
+      <p class="muted small">One brutal bonus question. No penalty. Eternal bragging rights.</p>
+      <button class="secondary full" id="impossibleBtn">TRY THE IMPOSSIBLE</button>
+    </div>
+
+    <div class="procard" id="proCard">
+      <span class="badge">HUMAN RESISTANCE</span>
+      <h3 id="proTitle">Join Beat AI Pro</h3>
+      <p class="muted" id="proCopy">Unlimited battles, Lightning, Boss Battles, no ads, advanced stats and exclusive cosmetics.</p>
+      <div class="progrid">
+        <div class="perk">✓ Unlimited practice</div><div class="perk">✓ Lightning Mode</div>
+        <div class="perk">✓ Weekly Boss</div><div class="perk">✓ Advanced stats</div>
+        <div class="perk">✓ No ads</div><div class="perk">✓ Exclusive cosmetics</div>
+      </div>
+      <button class="primary" id="upgradeBtn">GO PRO — $5.99/MONTH</button>
+      <div class="billing-row"><button class="secondary" id="restoreBtn">RESTORE PURCHASE</button><button class="secondary" id="manageBtn" hidden>MANAGE BILLING</button></div>
+    </div>
+
+    <div class="section-title"><h3>Live human feed</h3><small>Right now</small></div>
+    <div class="card" id="feed"></div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="gamehead"><b id="round">1 / 5</b><div class="progress"><div id="bar"></div></div><b id="points">0 pts</b></div>
+    <div id="timerLabel" class="lightning centered" hidden></div>
+    <div class="ai-bubble"><div class="ai-face" id="aiFace">🤖</div><div class="ai-text"><b id="aiName">Byte</b><div id="taunt">Humans usually miss this one.</div></div></div>
+    <div class="card">
+      <div id="type" class="type"></div><div id="q" class="question"></div><div id="sub" class="muted question-sub"></div>
+      <div class="confidence"><span class="muted small">Confidence:</span><button class="chip active" data-conf="1">50% · 1×</button><button class="chip" data-conf="1.5">75% · 1.5×</button><button class="chip" data-conf="2">100% · 2×</button></div>
+      <div id="answers" class="answers"></div><div id="feedback" class="feedback"></div><button id="next" class="primary next">NEXT →</button>
+    </div>
+  </section>
+
+  <section id="result" class="screen result">
+    <div class="eyebrow">Today's verdict</div><h2 id="verdict">Humanity survives.</h2><div id="final" class="score">0/5</div><div id="sharegrid" class="share">⬜⬜⬜⬜⬜</div><p id="meta" class="muted"></p>
+    <div class="card result-card"><div><div class="type">Arena rating</div><b id="ratingResult">1000 → 1000</b></div><div><div class="type">XP</div><b id="xpResult">+0 XP</b></div><div class="xpbar"><div id="xpBar"></div></div></div>
+    <button id="share" class="primary">CHALLENGE A FRIEND</button><button id="again" class="secondary full gap-top">ONE MORE PRACTICE ROUND</button>
+    <div class="card board"><div class="type">Today's leaderboard</div><div id="leaderboard"></div></div>
+    <div class="section-title"><h3>Skill breakdown</h3><small id="skillSummary">learning you…</small></div><div class="card" id="skills"></div>
+    <div class="section-title"><h3>Achievements</h3><small id="achievementCount">0 unlocked</small></div><div class="achievement-grid" id="achievements"></div>
+  </section>
+
+  <footer class="footer">Beat AI • quantum-adventures.vercel.app</footer>
 </div>
+
+<div class="modal" id="profileModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Human profile</div><h2 id="profileTitle">Novice Human</h2><p class="muted" id="profileMeta"></p><div id="profileContent"></div></div></div>
+<div class="modal" id="rewardModal"><div class="sheet"><button class="close" data-close>×</button><div class="type">Mystery crate</div><h2>You earned a drop</h2><div class="reward" id="rewardEmoji">🎁</div><h3 class="centered" id="rewardName">Neon Brain</h3><p class="muted centered" id="rewardDesc">A cosmetic reward for surviving five battles.</p><button class="primary" data-close>CLAIM IT</button></div></div>
 <div class="toast" id="toast"></div>
-<script>
-const $=s=>document.querySelector(s);const today=new Date().toISOString().slice(0,10);
-function showToast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2400)}
-function getStats(){return JSON.parse(localStorage.getItem('beatAIStats')||'{"streak":0,"best":0,"rating":1000}')}function refreshStats(){const s=getStats();$('#streak').textContent=`${s.streak||0} 🔥`;$('#best').textContent=s.best?`${s.best}/5`:'—';$('#rating').textContent=s.rating||1000;$('#ratingTop').textContent=s.rating||1000;$('#rank').textContent=s.best?`#${Math.max(101,9000-s.best*1200-(s.streak||0)*37)}`:'#—'}
-function billing(){return JSON.parse(localStorage.getItem('beatAIBilling')||'{"tier":"free"}')}
-function setBilling(b){localStorage.setItem('beatAIBilling',JSON.stringify(b));refreshBilling()}
-function refreshBilling(){const b=billing(),pro=b.tier==='pro';document.querySelectorAll('[data-promode]').forEach(x=>x.classList.toggle('locked',!pro));$('#proBtn').textContent=pro?'✦ PRO ✓':'✦ PRO';$('#proTitle').textContent=pro?'Beat AI Pro Active':'Join Beat AI Pro';$('#proCopy').textContent=pro?'Your Human Resistance membership is active on this device.':'Unlimited battles, Lightning, Boss Battles, no ads, advanced stats and exclusive cosmetics.';$('#upgradeBtn').style.display=pro?'none':'block';$('#manageBtn').style.display=pro&&b.customerId?'block':'none';$('#restoreBtn').style.display=pro?'none':'block'}
-async function beginCheckout(){const email=prompt('Email for your Beat AI Pro receipt and account recovery:','')||'';if(!email.includes('@'))return showToast('Enter a valid email to continue');$('#upgradeBtn').disabled=true;$('#upgradeBtn').textContent='OPENING SECURE CHECKOUT…';try{const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json();if(!r.ok||!d.url)throw new Error(d.error||'Checkout unavailable');localStorage.setItem('beatAIEmail',email);location.href=d.url}catch(e){showToast(e.message);$('#upgradeBtn').disabled=false;$('#upgradeBtn').textContent='GO PRO — $5.99/MONTH'}}
-async function verifySession(sessionId){try{const r=await fetch('/api/billing-status?session_id='+encodeURIComponent(sessionId));const d=await r.json();if(r.ok&&d.active){setBilling({tier:'pro',customerId:d.customerId,subscriptionId:d.subscriptionId,status:d.status,verifiedAt:Date.now()});showToast('Beat AI Pro unlocked ✦');history.replaceState({},'',location.pathname)}else showToast(d.error||'Could not verify subscription')}catch(e){showToast('Could not verify subscription')}}
-async function openPortal(){const b=billing();if(!b.customerId)return showToast('No Stripe customer found yet');try{const r=await fetch('/api/billing-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerId:b.customerId})});const d=await r.json();if(!r.ok||!d.url)throw new Error(d.error||'Billing portal unavailable');location.href=d.url}catch(e){showToast(e.message)}}
-function requirePro(action){if(billing().tier==='pro')return action();showToast('That mode is a Beat AI Pro perk ✦');document.querySelector('#proCard').scrollIntoView({behavior:'smooth',block:'center'})}
-$('#upgradeBtn').onclick=beginCheckout;$('#proBtn').onclick=()=>document.querySelector('#proCard').scrollIntoView({behavior:'smooth',block:'center'});$('#manageBtn').onclick=openPortal;$('#restoreBtn').onclick=()=>{const email=localStorage.getItem('beatAIEmail');showToast(email?'Use the same email and complete checkout verification on this device.':'Restore across devices needs sign-in next — web billing is working now.')};
-$('#lightningBtn').onclick=()=>requirePro(()=>showToast('Lightning Mode unlocked ⚡'));$('#bossBtn').onclick=()=>requirePro(()=>showToast('Boss Battle unlocked 👹'));$('#practiceBtn').onclick=()=>requirePro(()=>showToast('Unlimited Practice unlocked 🥊'));$('#friendBtn').onclick=()=>showToast('Friend duel ready');$('#play').onclick=()=>showToast('Daily five remains free forever');
-const qp=new URLSearchParams(location.search);if(qp.get('billing')==='success'&&qp.get('session_id'))verifySession(qp.get('session_id'));if(qp.get('billing')==='cancelled')showToast('Checkout cancelled — no charge made');refreshStats();refreshBilling();
-</script>
-</body></html>
+<script src="/app.js"></script>
+</body>
+</html>
