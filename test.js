@@ -30,8 +30,9 @@ for(const route of ['/api/checkout','/api/billing-status','/api/billing-portal',
 new Function(app);new Function(replay);new Function(teams);new Function(social);
 
 for(const token of ['/api/practice','beatAIRecentQuestions','difficulty()','avoid:recent()','crypto?.randomUUID'])assert(replay.includes(token),`missing infinite replay behavior: ${token}`);
-for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','buildPack(3','roundLimit','15-question free pack','freePacksLeft','consumeFreePack'])assert(replay.includes(token),`missing 15-question free-pack behavior: ${token}`);
+for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','buildPack(3','roundLimit','freePacksLeft','consumeFreePack',"PLAY TODAY'S 15 →",'GO PRO — UNLOCK UNLIMITED →','PLAY A FRESH 15 →','launchPro','Unlimited fresh 15-question AI packs'])assert(replay.includes(token),`missing 15-question hero funnel behavior: ${token}`);
 assert(replay.includes("mode==='practice'&&!pro&&freePacksLeft()===0"),'practice paywall is not enforced after free packs');
+assert(replay.includes("else if(mode==='practice') daily=await buildPack(3"),'practice packs are not consistently 15 questions');
 assert(practice.includes('OPENAI_API_KEY'),'practice generator missing OpenAI integration');
 new Function('require','module','exports',practice);
 
