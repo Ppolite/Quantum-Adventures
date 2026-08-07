@@ -20,6 +20,7 @@ const teamsApi=read('api/teams.js');
 const teamStore=read('api/team-store.js');
 const teamCheckout=read('api/team-checkout.js');
 const teamBillingStatus=read('api/team-billing-status.js');
+const stripeWebhook=read('api/stripe-webhook.js');
 
 for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','copyCompanyLinkedIn','companyWorkspace','workspaceCompany','workspaceMeta','workspaceChallenge','departmentBoard','teamBoard','newDepartment','addDepartmentBtn'])assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
@@ -42,7 +43,8 @@ for(const token of ['KV_REST_API_URL','UPSTASH_REDIS_REST_URL','TEAM_AUTH_SECRET
 for(const token of ['STRIPE_SECRET_KEY','STRIPE_TEAM_PRICE_ID','teamPriceId.startsWith(\'price_\')','MIN_TEAM_SEATS=10','line_items[0][quantity]','metadata[team_id]','metadata[tier]','subscription_data[metadata][team_id]','client_reference_id'])assert(teamCheckout.includes(token),`missing Teams billing behavior: ${token}`);
 assert(!teamCheckout.includes('STRIPE_PRO_PRICE_ID'),'Teams checkout must never use consumer Pro price');
 for(const token of ['teamId and session_id required','Admin required','checkout.metadata?.team_id','checkout.client_reference_id','checkout.metadata?.tier!==\'teams\'','checkout.status!==\'complete\'','/v1/subscriptions/','billingStatus=sub.status','billingSeatCount=seats','billingSubscriptionId=subId','publicWorkspace(workspace)'])assert(teamBillingStatus.includes(token),`missing Teams post-checkout activation behavior: ${token}`);
-for(const source of [teamsApi,teamStore,teamCheckout,teamBillingStatus])new Function('require','module','exports',source);
+for(const token of ['STRIPE_WEBHOOK_SECRET','stripe-signature','createHmac','timingSafeEqual','checkout.session.completed','customer.subscription.created','customer.subscription.updated','customer.subscription.deleted','invoice.paid','invoice.payment_failed','beat-ai:stripe-event:','duplicate:true','metadata?.tier!==\'teams\'','metadata?.app!==\'beat-ai\'','billingCancelAtPeriodEnd','billingCurrentPeriodEnd','billingActive=ACTIVE.has'])assert(stripeWebhook.includes(token),`missing Stripe webhook lifecycle behavior: ${token}`);
+for(const source of [teamsApi,teamStore,teamCheckout,teamBillingStatus,stripeWebhook])new Function('require','module','exports',source);
 
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
@@ -50,7 +52,7 @@ new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
 assert(daily.includes('aiTake'),'daily API lacks AI replay field');
-for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard,teamsApi,teamStore,teamCheckout,teamBillingStatus})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
+for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard,teamsApi,teamStore,teamCheckout,teamBillingStatus,stripeWebhook})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
 assert(checkout.includes('STRIPE_SECRET_KEY'),'checkout missing STRIPE_SECRET_KEY');
 assert(checkout.includes('/v1/checkout/sessions'),'checkout does not call Stripe Checkout Sessions');
 assert(billingStatus.includes('/v1/checkout/sessions/'),'billing status does not verify Checkout sessions');
