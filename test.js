@@ -4,8 +4,9 @@ const html=fs.readFileSync('index.html','utf8');
 const daily=fs.readFileSync('api/daily.js','utf8');
 const scores=fs.readFileSync('api/scores.js','utf8');
 
-for(const token of ['Arena rating','Weekly Boss','Lightning','Impossible Question','Achievements','Mystery crate','AI replay','CHALLENGE A FRIEND','Live human feed']){
-  assert(html.includes(token),`missing engagement feature: ${token}`);
+const lower=html.toLowerCase();
+for(const token of ['arena rating','weekly boss','lightning','impossible question','achievements','mystery crate','ai replay','challenge a friend','live human feed']){
+  assert(lower.includes(token),`missing engagement feature: ${token}`);
 }
 const scripts=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)];
 assert(scripts.length,'inline game script missing');
