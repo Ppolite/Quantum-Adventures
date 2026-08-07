@@ -40,7 +40,8 @@ for(const token of ['beatAICompanyInterest','private company leagues','LinkedIn 
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 for(const token of ['incomingChallenge','I beat AI today','shareKind','roundLimit','challengeUrl','cardUrl','beatAIInvitedBy','navigator.share','/api/share-card'])assert(social.includes(token),`missing victory-aware social behavior: ${token}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
-for(const token of ['1200','630','PLAY BEATAI.GAMES','I BEAT AI TODAY!','YOU WERE CHALLENGED','translate(825 118)','ellipse cx="132" cy="338"','path d="M54 78 Q132 18 210 78"','${bot}'])assert(shareCard.includes(token),`share card missing rival token: ${token}`);
+for(const token of ['1200','630','PLAY BEATAI.GAMES','I BEAT AI TODAY!','YOU WERE CHALLENGED','translate(825 118)','ellipse cx="132" cy="338"','${bot}'])assert(shareCard.includes(token),`share card missing rival token: ${token}`);
+assert(shareCard.includes('const bot=`<g transform=')&&shareCard.includes('ellipse cx="132" cy="338"')&&shareCard.includes('${bot}'),'share card rival bot structure missing');
 new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
