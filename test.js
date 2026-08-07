@@ -42,7 +42,7 @@ for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php
 for(const token of ['incomingChallenge','I beat AI today','shareKind','roundLimit','challengeUrl','cardUrl','beatAIInvitedBy','navigator.share','/api/share-card'])assert(social.includes(token),`missing victory-aware social behavior: ${token}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
 for(const token of ['1200','630','PLAY BEATAI.GAMES','I BEAT AI TODAY!','YOU WERE CHALLENGED','translate(840 155)','score=clamp(q.score,0,15)','total=clamp(q.total||5,1,15)'])assert(shareCard.includes(token),`share card missing token: ${token}`);
-assert(shareCard.includes('circle cx=\\"110\\" cy=\\"110\\"')&&shareCard.includes('rect x=\\"55\\" y=\\"55\\"'),'coolbot structure missing from share card');
+assert(shareCard.includes('const bot=`<g transform=')&&shareCard.includes('circle cx="110" cy="110"')&&shareCard.includes('rect x="55" y="55"')&&shareCard.includes('${bot}'),'coolbot structure missing from share card');
 new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
