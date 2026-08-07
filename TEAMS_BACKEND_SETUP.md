@@ -27,7 +27,7 @@ The existing consumer Pro billing variables remain unchanged.
 ## Security model
 
 - Workspace creation returns a signed 30-day admin session.
-- Invite-code joins return signed 30-day member sessions.
+- Invite-link joins return signed 30-day member sessions.
 - Admin-only mutations: add department, rotate invite code, remove member, start Teams checkout.
 - Member/admin mutations: record game scores.
 - Storage credentials and Stripe keys stay server-side.
