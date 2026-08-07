@@ -3,7 +3,7 @@
   const modal=$('companyModal');
   const open=()=>modal?.classList.add('open');
   const close=()=>modal?.classList.remove('open');
-  const linkedinCopy=()=>`We’re testing a fun new idea: Beat AI for Teams — private company leagues, department battles, weekly AI challenges and team leaderboards designed to make AI literacy and critical thinking feel like a competition instead of another training module.\n\nWould your team play this?\n\nhttps://quantum-adventures.vercel.app`;
+  const linkedinCopy=()=>`We’re testing a fun new idea: Beat AI for Teams — private company leagues, department battles, weekly AI challenges and team leaderboards designed to make AI literacy and critical thinking feel like a competition instead of another training module.\n\nWould your team play this?\n\nhttps://beatai.games`;
 
   $('companyInterestBtn')?.addEventListener('click',open);
   $('saveCompanyInterest')?.addEventListener('click',()=>{
