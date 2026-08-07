@@ -16,10 +16,10 @@ for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','im
 }
 assert(html.includes('/app.js'),'app.js is not loaded');
 assert(html.includes('/styles.css'),'styles.css is not loaded');
-assert(css.includes('.impossible')&&css.includes('.procard'),'game/billing styles missing');
+assert(css.includes('.impossible')&&css.includes('.procard')&&css.includes('.achievement-grid'),'game/billing styles missing');
 
-for(const hook of ["start('lightning')","start('boss')","start('practice')","start('impossible')",'renderAchievements','renderSkills','openReward','Arena rating']){
-  assert(app.includes(hook),`missing engagement behavior: ${hook}`);
+for(const hook of ["start('lightning')","start('boss')","start('practice')","start('impossible')",'renderAchievements','renderSkills','openReward','beginCheckout','verifySession','openPortal']){
+  assert(app.includes(hook),`missing client behavior: ${hook}`);
 }
 for(const route of ['/api/checkout','/api/billing-status','/api/billing-portal','/api/daily','/api/scores']){
   assert(app.includes(route),`client is not wired to ${route}`);
