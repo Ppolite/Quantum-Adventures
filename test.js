@@ -19,6 +19,7 @@ const billingPortal=read('api/billing-portal.js');
 const teamsApi=read('api/teams.js');
 const teamStore=read('api/team-store.js');
 const teamCheckout=read('api/team-checkout.js');
+const teamBillingStatus=read('api/team-billing-status.js');
 
 for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','copyCompanyLinkedIn','companyWorkspace','workspaceCompany','workspaceMeta','workspaceChallenge','departmentBoard','teamBoard','newDepartment','addDepartmentBtn'])assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
@@ -35,12 +36,13 @@ for(const token of ['beatAIFreePacksUsed','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=
 assert(practice.includes('OPENAI_API_KEY'),'practice generator missing OpenAI integration');
 new Function('require','module','exports',practice);
 
-for(const token of ['beatAITeamSession','beatAITeamWorkspace','/api/teams','action:\'create\'','action:\'join\'','action:\'recordScore\'','team_invite','/api/team-checkout','UPGRADE TEAM PLAN','How many seats? (10 minimum)','recordLatestRun','copyTeamInvite','rotateInvite','addDepartment','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing persistent Teams client behavior: ${token}`);
-for(const token of ['action===\'create\'','action===\'join\'','action===\'addDepartment\'','action===\'rotateInvite\'','action===\'removeMember\'','action===\'recordScore\'','Admin required','weekly.crown'])assert(teamsApi.includes(token),`missing Teams API behavior: ${token}`);
+for(const token of ['beatAITeamSession','beatAITeamWorkspace','/api/teams','action:\'create\'','departmentName:dept','action:\'join\'','action:\'recordScore\'','team_invite','/api/team-checkout','/api/team-billing-status','verifyTeamBilling','UPGRADE TEAM PLAN','TEAM PLAN ACTIVE ✓','How many team seats? (10 minimum)','recordLatestRun','copyTeamInvite','rotateInvite','addDepartment','private company leagues','LinkedIn post copied'])assert(teams.includes(token),`missing persistent Teams client behavior: ${token}`);
+for(const token of ['action===\'create\'','departmentName=normalize(b.departmentName)','firstDepartment','departmentId:firstDepartment?.id||null','action===\'join\'','action===\'addDepartment\'','action===\'rotateInvite\'','action===\'removeMember\'','action===\'recordScore\'','Math.min(total*200','Admin required','weekly.crown'])assert(teamsApi.includes(token),`missing Teams API behavior: ${token}`);
 for(const token of ['KV_REST_API_URL','UPSTASH_REDIS_REST_URL','TEAM_AUTH_SECRET','createHmac','timingSafeEqual','publicWorkspace'])assert(teamStore.includes(token),`missing Teams store/security behavior: ${token}`);
 for(const token of ['STRIPE_SECRET_KEY','STRIPE_TEAM_PRICE_ID','teamPriceId.startsWith(\'price_\')','MIN_TEAM_SEATS=10','line_items[0][quantity]','metadata[team_id]','metadata[tier]','subscription_data[metadata][team_id]','client_reference_id'])assert(teamCheckout.includes(token),`missing Teams billing behavior: ${token}`);
 assert(!teamCheckout.includes('STRIPE_PRO_PRICE_ID'),'Teams checkout must never use consumer Pro price');
-for(const source of [teamsApi,teamStore,teamCheckout])new Function('require','module','exports',source);
+for(const token of ['teamId and session_id required','Admin required','checkout.metadata?.team_id','checkout.client_reference_id','checkout.metadata?.tier!==\'teams\'','checkout.status!==\'complete\'','/v1/subscriptions/','billingStatus=sub.status','billingSeatCount=seats','billingSubscriptionId=subId','publicWorkspace(workspace)'])assert(teamBillingStatus.includes(token),`missing Teams post-checkout activation behavior: ${token}`);
+for(const source of [teamsApi,teamStore,teamCheckout,teamBillingStatus])new Function('require','module','exports',source);
 
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 assert(shareCard.includes('image/svg+xml'),'share card does not return an image');
@@ -48,7 +50,7 @@ new Function('require','module','exports',shareCard);
 
 assert(daily.includes('category'),'daily API lacks categories');
 assert(daily.includes('aiTake'),'daily API lacks AI replay field');
-for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard,teamsApi,teamStore,teamCheckout})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
+for(const [name,source] of Object.entries({daily,practice,scores,checkout,billingStatus,billingPortal,shareCard,teamsApi,teamStore,teamCheckout,teamBillingStatus})){new Function('require','module','exports',source);assert(source.includes('module.exports'),`${name} API has no handler export`)}
 assert(checkout.includes('STRIPE_SECRET_KEY'),'checkout missing STRIPE_SECRET_KEY');
 assert(checkout.includes('/v1/checkout/sessions'),'checkout does not call Stripe Checkout Sessions');
 assert(billingStatus.includes('/v1/checkout/sessions/'),'billing status does not verify Checkout sessions');
