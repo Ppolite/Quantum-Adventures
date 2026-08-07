@@ -1,10 +1,29 @@
 (()=>{
   const recentKey='beatAIRecentQuestions';
+  const freePackKey='beatAIFreePacksUsed';
+  const FREE_PACK_LIMIT=3;
   const originalStart=window.start;
   if(typeof originalStart!=='function') return;
 
   function recent(){try{return JSON.parse(localStorage.getItem(recentKey)||'[]')}catch{return[]}}
   function remember(list){const merged=[...list.map(x=>x.q),...recent()].filter(Boolean);const unique=[];for(const q of merged){if(!unique.includes(q))unique.push(q);if(unique.length>=30)break}localStorage.setItem(recentKey,JSON.stringify(unique))}
+  function freePacksUsed(){return Math.max(0,Math.min(FREE_PACK_LIMIT,Number(localStorage.getItem(freePackKey)||0)||0))}
+  function freePacksLeft(){return Math.max(0,FREE_PACK_LIMIT-freePacksUsed())}
+  function consumeFreePack(){const used=Math.min(FREE_PACK_LIMIT,freePacksUsed()+1);localStorage.setItem(freePackKey,String(used));updateFreePackUI();return FREE_PACK_LIMIT-used}
+  function isPro(){try{return typeof billing==='function'&&billing().tier==='pro'}catch{return false}}
+  function updateFreePackUI(){
+    const practice=document.getElementById('practiceBtn');
+    if(!practice)return;
+    const small=practice.querySelector('small');
+    if(isPro()){
+      practice.classList.remove('locked');
+      if(small)small.textContent='PRO · New AI-generated questions every run.';
+      return;
+    }
+    const left=freePacksLeft();
+    practice.classList.toggle('locked',left===0);
+    if(small)small.textContent=left>0?`FREE · ${left} fresh pack${left===1?'':'s'} left, then Pro.`:'PRO · Your 3 free packs are used.';
+  }
   function difficulty(){
     try{
       const p=profile();
@@ -26,7 +45,12 @@
   }
 
   async function infiniteStart(mode='practice'){
-    if(['practice','lightning','boss'].includes(mode)&&typeof billing==='function'&&billing().tier!=='pro'){
+    const pro=isPro();
+    if(mode==='practice'&&!pro&&freePacksLeft()===0){
+      toast?.('Your 3 free packs are used — unlock infinite practice with Pro ✦');
+      return typeof requirePro==='function'?requirePro(()=>infiniteStart(mode)):originalStart(mode);
+    }
+    if(['lightning','boss'].includes(mode)&&!pro){
       return typeof requirePro==='function'?requirePro(()=>infiniteStart(mode)):originalStart(mode);
     }
     if(!['practice','lightning','boss'].includes(mode))return originalStart(mode);
@@ -38,6 +62,10 @@
         daily=[...first,...second];
       }else{
         daily=await fetchFresh(mode);
+      }
+      if(mode==='practice'&&!pro){
+        const left=consumeFreePack();
+        toast?.(left?`${left} free fresh pack${left===1?'':'s'} left`:'That was free pack #3 — Pro unlocks infinite play ✦');
       }
       clearInterval(timer);
       state={round:0,correct:0,score:0,marks:[],mode,start:Date.now(),cats:{}};
@@ -51,6 +79,7 @@
   }
 
   window.start=infiniteStart;
+  window.BeatAIFreePacks={limit:FREE_PACK_LIMIT,used:freePacksUsed,left:freePacksLeft,refresh:updateFreePackUI};
   const practice=document.getElementById('practiceBtn');
   const lightning=document.getElementById('lightningBtn');
   const boss=document.getElementById('bossBtn');
@@ -59,4 +88,5 @@
   if(lightning)lightning.onclick=()=>infiniteStart('lightning');
   if(boss)boss.onclick=()=>infiniteStart('boss');
   if(again)again.onclick=()=>infiniteStart('practice');
+  updateFreePackUI();
 })();
