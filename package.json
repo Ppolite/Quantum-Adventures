@@ -4,7 +4,7 @@
   "description": "Beat AI — Human vs Machine challenge game",
   "main": "app.js",
   "scripts": {
-    "test": "node scripts/smoke-test.js"
+    "test": "node test.js && node scripts/smoke-test.js"
   },
   "repository": {
     "type": "git",
