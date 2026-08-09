@@ -1,5 +1,5 @@
 const PRICE_ID=process.env.STRIPE_PRO_PRICE_ID||'price_1U1merHsXnRKu4CMnRL36SED';
-const SITE_URL=(process.env.SITE_URL||'https://beatai.games').replace(/\/$/,'');
+const CANONICAL_SITE_URL='https://beatai.games';
 
 function json(res,status,body){res.statusCode=status;res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');res.end(JSON.stringify(body));}
 
@@ -15,8 +15,9 @@ module.exports=async(req,res)=>{
     params.set('mode','subscription');
     params.set('line_items[0][price]',PRICE_ID);
     params.set('line_items[0][quantity]','1');
-    params.set('success_url',`${SITE_URL}/?billing=success&session_id={CHECKOUT_SESSION_ID}`);
-    params.set('cancel_url',`${SITE_URL}/?billing=cancelled`);
+    // Never let a stale Vercel SITE_URL send a paid customer to a retired deployment.
+    params.set('success_url',`${CANONICAL_SITE_URL}/?billing=success&session_id={CHECKOUT_SESSION_ID}`);
+    params.set('cancel_url',`${CANONICAL_SITE_URL}/?billing=cancelled`);
     params.set('allow_promotion_codes','true');
     params.set('metadata[app]','beat-ai');
     params.set('metadata[tier]','pro');
