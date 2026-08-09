@@ -1,0 +1,23 @@
+{
+  "name": "primary",
+  "version": "1.0.0",
+  "description": "**Live:** https://quantum-adventures.vercel.app",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ppolite/Quantum-Adventures.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Ppolite/Quantum-Adventures/issues"
+  },
+  "homepage": "https://github.com/Ppolite/Quantum-Adventures#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
