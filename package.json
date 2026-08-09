@@ -1,22 +1,22 @@
 {
   "name": "primary",
   "version": "1.0.0",
-  "description": "**Live:** https://quantum-adventures.vercel.app",
+  "description": "Beat AI — Human vs Machine challenge game",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test.js && node scripts/smoke-test.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Ppolite/Quantum-Adventures.git"
   },
-  "keywords": [],
+  "keywords": ["beat-ai", "trivia", "ai-game"],
   "author": "",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/Ppolite/Quantum-Adventures/issues"
   },
-  "homepage": "https://github.com/Ppolite/Quantum-Adventures#readme",
+  "homepage": "https://beatai.games",
   "dependencies": {
     "@vercel/analytics": "^2.0.1"
   }

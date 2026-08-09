@@ -7,6 +7,50 @@ const FALLBACK=[
 ];
 const json=(res,status,body)=>{res.status(status).setHeader('Cache-Control','no-store').json(body)};
 function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function normalize(q){return String(q||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ')}
 function valid(list){return Array.isArray(list)&&list.length===5&&list.every(x=>typeof x.type==='string'&&typeof x.category==='string'&&typeof x.q==='string'&&Array.isArray(x.options)&&x.options.length===4&&Number.isInteger(x.answer)&&x.answer>=0&&x.answer<=3&&typeof x.why==='string'&&typeof x.aiTake==='string')}
-async function generate({seed,difficulty,avoid}){const key=process.env.OPENAI_API_KEY;if(!key)return FALLBACK;const prompt=`Create exactly 5 fresh multiple-choice challenges for Beat AI infinite practice. Seed: ${seed}. Target difficulty 1-5: ${difficulty}. Avoid repeating or closely paraphrasing these recently seen questions: ${JSON.stringify(avoid.slice(0,20))}. Mix Logic, Patterns, Language, Reasoning, and occasional Visual-style text puzzles. Each item: type, category, difficulty (1-5), q, sub, options exactly four strings, answer integer 0-3, why, aiTake. Make the set meaningfully different from common riddles when possible. Keep each playable in under 30 seconds. No politics, medical advice, sexual content, copyrighted trivia, subjective answers, or browsing. Return only JSON {"challenges":[...]}.`;const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-5-mini',input:prompt,text:{format:{type:'json_object'}}})});if(!r.ok)throw new Error(`OpenAI ${r.status}`);const d=await r.json();const text=d.output_text||d.output?.flatMap(x=>x.content||[]).map(x=>x.text||'').join('')||'';const list=JSON.parse(text).challenges;if(!valid(list))throw new Error('Invalid practice set');return list}
-module.exports=async(req,res)=>{if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});let raw='';for await(const c of req)raw+=c;let body={};try{body=JSON.parse(raw||'{}')}catch{}const difficulty=clamp(Number(body.difficulty)||2,1,5);const avoid=Array.isArray(body.avoid)?body.avoid.map(x=>String(x).slice(0,180)):[];const seed=String(body.seed||`${Date.now()}-${Math.random()}`).slice(0,120);try{const challenges=await generate({seed,difficulty,avoid});return json(res,200,{challenges,source:process.env.OPENAI_API_KEY?'generated':'fallback',difficulty,seed})}catch(e){return json(res,200,{challenges:FALLBACK,source:'fallback',difficulty,warning:e.message})}};
+function uniqueAgainst(list,avoid){const seen=new Set(avoid.map(normalize).filter(Boolean));const own=new Set();return list.every(x=>{const k=normalize(x.q);if(!k||seen.has(k)||own.has(k))return false;own.add(k);return true})}
+async function requestGenerated({seed,difficulty,avoid,attempt}){
+  const key=process.env.OPENAI_API_KEY;
+  if(!key)return null;
+  const prompt=`Create exactly 5 fresh multiple-choice challenges for Beat AI infinite practice. Seed: ${seed}. Generation attempt: ${attempt}. Target difficulty 1-5: ${difficulty}. NEVER repeat, lightly rewrite, or closely paraphrase any question in this player's history: ${JSON.stringify(avoid.slice(0,120))}. Mix Logic, Patterns, Language, Reasoning, Science, History, Entertainment, Sports, Technology, and occasional visual-style text puzzles. Each item: type, category, difficulty (1-5), q, sub, options exactly four strings, answer integer 0-3, why, aiTake. Make every question objectively answerable, meaningfully distinct, and playable in under 30 seconds. Avoid politics, medical advice, sexual content, copyrighted passages, trick answers that depend on opinion, and browsing. Return only JSON {"challenges":[...]}.`;
+  const r=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:process.env.OPENAI_MODEL||'gpt-5-mini',input:prompt,text:{format:{type:'json_object'}}})});
+  if(!r.ok)throw new Error(`OpenAI ${r.status}`);
+  const d=await r.json();
+  const text=d.output_text||d.output?.flatMap(x=>x.content||[]).map(x=>x.text||'').join('')||'';
+  const list=JSON.parse(text).challenges;
+  if(!valid(list))throw new Error('Invalid practice set');
+  return list;
+}
+async function generate({seed,difficulty,avoid}){
+  const key=process.env.OPENAI_API_KEY;
+  if(!key)return {challenges:FALLBACK,source:'fallback'};
+  let history=[...avoid];
+  let lastError=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const list=await requestGenerated({seed:`${seed}-${attempt}`,difficulty,avoid:history,attempt});
+      if(uniqueAgainst(list,avoid))return {challenges:list,source:'generated'};
+      history=[...list.map(x=>x.q),...history].slice(0,180);
+      lastError=new Error('Generator returned a repeated question');
+    }catch(e){lastError=e}
+  }
+  throw lastError||new Error('Unable to generate a unique practice set');
+}
+module.exports=async(req,res)=>{
+  if(req.method!=='POST')return json(res,405,{error:'Method not allowed'});
+  let raw='';for await(const c of req)raw+=c;
+  let body={};try{body=JSON.parse(raw||'{}')}catch{}
+  const difficulty=clamp(Number(body.difficulty)||2,1,5);
+  const avoid=Array.isArray(body.avoid)?body.avoid.map(x=>String(x).slice(0,220)).filter(Boolean).slice(0,2000):[];
+  const seed=String(body.seed||`${Date.now()}-${Math.random()}`).slice(0,120);
+  const requireFresh=body.requireFresh===true;
+  try{
+    const result=await generate({seed,difficulty,avoid});
+    if(requireFresh&&result.source!=='generated')return json(res,503,{error:'Fresh AI generator is temporarily unavailable. No repeated pack was served.',difficulty,seed});
+    return json(res,200,{...result,difficulty,seed});
+  }catch(e){
+    if(requireFresh)return json(res,503,{error:e.message||'Fresh pack unavailable',difficulty,seed});
+    return json(res,200,{challenges:FALLBACK,source:'fallback',difficulty,warning:e.message});
+  }
+};
