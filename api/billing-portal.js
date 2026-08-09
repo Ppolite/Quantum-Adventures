@@ -1,4 +1,4 @@
-const SITE_URL=process.env.SITE_URL||'https://quantum-adventures.vercel.app';
+const CANONICAL_SITE_URL='https://beatai.games';
 function json(res,status,body){res.statusCode=status;res.setHeader('Content-Type','application/json');res.end(JSON.stringify(body));}
 
 module.exports=async(req,res)=>{
@@ -12,7 +12,8 @@ module.exports=async(req,res)=>{
     if(!/^cus_/.test(customerId)) return json(res,400,{error:'Missing customer'});
     const params=new URLSearchParams();
     params.set('customer',customerId);
-    params.set('return_url',`${SITE_URL}/?billing=portal-return`);
+    // Billing management must always return to the live Beat AI domain.
+    params.set('return_url',`${CANONICAL_SITE_URL}/?billing=portal-return`);
     const r=await fetch('https://api.stripe.com/v1/billing_portal/sessions',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/x-www-form-urlencoded'},body:params});
     const data=await r.json();
     if(!r.ok) throw new Error(data?.error?.message||'Portal unavailable');
