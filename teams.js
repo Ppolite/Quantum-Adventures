@@ -16,7 +16,7 @@
   async function createWorkspace(){
     const company=($('companyName')?.value||'').trim(),size=$('companySize')?.value||'',dept=($('companyDepartment')?.value||'').trim();
     if(!company)return window.toast?.('Add a company or team name');
-    try{const d=await api({action:'create',company,size,adminName:'You'});setSession(d.session);cache(d.workspace);if(dept)await addDepartment(dept);else renderWorkspace(d.workspace);window.toast?.('Private company league is live 🏢')}catch(e){window.toast?.(e.message)}
+    try{const d=await api({action:'create',company,size,departmentName:dept,adminName:'You'});setSession(d.session);cache(d.workspace);renderWorkspace(d.workspace);window.toast?.('Private company league is live 🏢')}catch(e){window.toast?.(e.message)}
   }
   async function joinWorkspace(inviteCode){
     const name=prompt('Your name for the company leaderboard:');if(!name)return;const departmentName=prompt('Department (optional):')||'';
@@ -28,16 +28,18 @@
   async function teamCheckout(){
     const ws=loadCache();if(!ws)return;
     const suggested=Math.max(10,ws.members?.length||10);
-    const raw=prompt('How many seats? (10 minimum)',String(suggested));
+    const raw=prompt('How many team seats? (10 minimum)',String(suggested));
     if(raw===null)return;
     const seats=Math.max(10,Math.floor(Number(raw)||suggested));
-    try{
-      const r=await fetch('/api/team-checkout',{method:'POST',headers:authHeaders(),body:JSON.stringify({teamId:ws.id,seats})});
-      const d=await r.json();
-      if(!r.ok)throw new Error(d.error||'Teams checkout failed');
-      if(!d.url)throw new Error('Stripe checkout URL missing');
-      location.href=d.url;
-    }catch(e){window.toast?.(e.message)}
+    try{const r=await fetch('/api/team-checkout',{method:'POST',headers:authHeaders(),body:JSON.stringify({teamId:ws.id,seats})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Teams checkout failed');if(!d.url)throw new Error('Stripe checkout URL missing');location.href=d.url}catch(e){window.toast?.(e.message)}
+  }
+  async function verifyTeamBilling(){
+    const q=new URLSearchParams(location.search),result=q.get('team_billing'),sessionId=q.get('session_id');
+    if(!result)return;
+    if(result==='cancelled'){window.toast?.('Team checkout cancelled');history.replaceState({},'',location.pathname);return}
+    if(result!=='success'||!sessionId)return;
+    const ws=loadCache();if(!ws?.id||!getSession()){window.toast?.('Team billing returned, but this admin session is missing');return}
+    try{const r=await fetch(`/api/team-billing-status?teamId=${encodeURIComponent(ws.id)}&session_id=${encodeURIComponent(sessionId)}`,{headers:{Authorization:`Bearer ${getSession()}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not verify Team plan');if(d.workspace){cache(d.workspace);renderWorkspace(d.workspace)}window.toast?.(d.active?`Team plan active${d.seats?` · ${d.seats} seats`:''} ✓`:`Team billing status: ${d.status||'pending'}`)}catch(e){window.toast?.(e.message||'Could not verify Team plan')}history.replaceState({},'',location.pathname)
   }
   async function recordLatestRun(){
     const ws=loadCache();if(!ws?.id||!getSession())return;
@@ -45,16 +47,18 @@
   }
   function renderWorkspace(ws){
     const box=$('companyWorkspace');if(!box)return;box.hidden=false;$('companySetup')?.setAttribute('hidden','');
-    $('workspaceCompany').textContent=ws.company;$('workspaceMeta').textContent=`Season ${ws.season||1} · ${ws.members?.length||0} members · Invite ${ws.inviteCode} · ${ws.billingStatus||'trial'}`;
+    const seats=ws.billingSeatCount?` · ${ws.billingSeatCount} seats`:'';
+    $('workspaceCompany').textContent=ws.company;$('workspaceMeta').textContent=`Season ${ws.season||1} · ${ws.members?.length||0} members · Invite ${ws.inviteCode} · ${ws.billingStatus||'trial'}${seats}`;
     const weekly=ws.weekly||{};$('workspaceChallenge').innerHTML=`<b>${weekly.title||'Weekly AI Challenge'}</b><span>${weekly.questions||15} questions · shared company competition</span><strong>${weekly.crown?`👑 ${weekly.crown.name} ${weekly.crown.score}`:'Company Crown 👑'}</strong>`;
     $('departmentBoard').innerHTML=(ws.departments||[]).map((d,i)=>`<div class="team-row"><span>${i===0?'👑':'#'+(i+1)} <b>${d.name}</b><small>${d.members||0} member${d.members===1?'':'s'}</small></span><strong>${(d.points||0).toLocaleString()} pts</strong></div>`).join('')||'<div class="muted small">Add departments to start the rivalry.</div>';
     $('teamBoard').innerHTML=(ws.members||[]).map((m,i)=>`<div class="team-row"><span>${i===0?'🔥':'#'+(i+1)} <b>${m.name}</b><small>${memberDept(ws,m)} · ${m.role}</small></span><strong>${(m.points||0).toLocaleString()}</strong></div>`).join('');
     $('companyInterestNote').textContent=`${ws.company} league live · invite ${ws.inviteCode}`;$('companyInterestBtn').textContent='OPEN COMPANY LEAGUE →';
-    const actions=$('companyWorkspace')?.querySelector('.workspace-actions');if(actions){const admin=workspaceRole()==='admin';actions.innerHTML=`<button class="secondary" id="copyTeamInvite">COPY TEAM INVITE</button>${admin?'<button class="secondary" id="rotateTeamInvite">ROTATE CODE</button><button class="secondary" id="teamBillingBtn">UPGRADE TEAM PLAN</button>':''}`;$('copyTeamInvite')?.addEventListener('click',inviteCopy);$('rotateTeamInvite')?.addEventListener('click',rotateInvite);$('teamBillingBtn')?.addEventListener('click',teamCheckout);const add=$('addDepartmentBtn');if(add)add.hidden=!admin;const input=$('newDepartment');if(input)input.hidden=!admin}
+    const actions=$('companyWorkspace')?.querySelector('.workspace-actions');if(actions){const admin=workspaceRole()==='admin',active=['active','trialing'].includes(ws.billingStatus);actions.innerHTML=`<button class="secondary" id="copyTeamInvite">COPY TEAM INVITE</button>${admin?'<button class="secondary" id="rotateTeamInvite">ROTATE CODE</button><button class="secondary" id="teamBillingBtn">'+(active?'TEAM PLAN ACTIVE ✓':'UPGRADE TEAM PLAN')+'</button>':''}`;$('copyTeamInvite')?.addEventListener('click',inviteCopy);$('rotateTeamInvite')?.addEventListener('click',rotateInvite);const bill=$('teamBillingBtn');if(bill){bill.disabled=active;if(!active)bill.addEventListener('click',teamCheckout)}const add=$('addDepartmentBtn');if(add)add.hidden=!admin;const input=$('newDepartment');if(input)input.hidden=!admin}
   }
   async function hydrate(){const ws=loadCache();if(ws){renderWorkspace(ws);await refreshWorkspace()}else{$('companySetup')?.removeAttribute('hidden');if($('companyWorkspace'))$('companyWorkspace').hidden=true}}
   function open(){hydrate();modal?.classList.add('open')}
   $('companyInterestBtn')?.addEventListener('click',open);$('saveCompanyInterest')?.addEventListener('click',createWorkspace);$('copyCompanyLinkedIn')?.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(linkedinCopy());window.toast?.('LinkedIn post copied')}catch{window.toast?.('Could not copy post')}});$('addDepartmentBtn')?.addEventListener('click',()=>addDepartment());modal?.querySelector('[data-close]')?.addEventListener('click',close);modal?.addEventListener('click',e=>{if(e.target===modal)close()});
   const result=$('result');if(result)new MutationObserver(()=>{if(result.classList.contains('active'))recordLatestRun()}).observe(result,{attributes:true,attributeFilter:['class']});
-  const invite=new URLSearchParams(location.search).get('team_invite');if(invite&&!getSession())setTimeout(()=>joinWorkspace(invite),500);hydrate();
+  const invite=new URLSearchParams(location.search).get('team_invite');if(invite&&!getSession())setTimeout(()=>joinWorkspace(invite),500);
+  hydrate().then(verifyTeamBilling);
 })();

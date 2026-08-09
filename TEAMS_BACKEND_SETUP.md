@@ -1,6 +1,6 @@
 # Beat AI for Teams backend setup
 
-Beat AI for Teams now supports shared server-side workspaces, signed member/admin sessions, invite-code joins, live company/department leaderboards, weekly crown state, and Stripe organization checkout.
+Beat AI for Teams now supports shared server-side workspaces, signed member/admin sessions, invite-code joins, live company/department leaderboards, weekly crown state, Stripe organization checkout, and Stripe webhook lifecycle reconciliation.
 
 ## Required Vercel environment variables
 
@@ -21,8 +21,28 @@ or:
 ### Teams billing
 - `STRIPE_SECRET_KEY`
 - `STRIPE_TEAM_PRICE_ID` — recurring per-seat price used by `/api/team-checkout`.
+- `STRIPE_WEBHOOK_SECRET` — signing secret for the Stripe endpoint at `https://beatai.games/api/stripe-webhook`.
 
 The existing consumer Pro billing variables remain unchanged.
+
+## Stripe webhook configuration
+
+Create a Stripe webhook endpoint for:
+
+`https://beatai.games/api/stripe-webhook`
+
+Subscribe it to these events:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+- `invoice.paid`
+- `invoice.payment_failed`
+
+Copy the endpoint signing secret (`whsec_...`) into Vercel as `STRIPE_WEBHOOK_SECRET`, then redeploy.
+
+The webhook verifies Stripe signatures with a five-minute timestamp tolerance, ignores non-Beat-AI/non-Teams subscriptions, deduplicates event IDs in the Teams store, and reconciles subscription status, seat quantity, customer/subscription IDs, cancellation state and current-period end into the company workspace.
 
 ## Security model
 
@@ -32,6 +52,7 @@ The existing consumer Pro billing variables remain unchanged.
 - Member/admin mutations: record game scores.
 - Storage credentials and Stripe keys stay server-side.
 - Private Stripe customer/subscription identifiers are stripped from workspace responses.
+- Stripe webhook requests require a valid Stripe signature.
 
 ## What becomes live after configuration
 
@@ -39,8 +60,10 @@ The existing consumer Pro billing variables remain unchanged.
 - Completed Beat AI runs automatically write member points into the shared company leaderboard.
 - Department totals are calculated server-side from member scores.
 - Admins can add departments, rotate invite codes, and start per-seat Teams checkout.
+- Successful checkout activates the workspace immediately.
+- Later seat changes, cancellations, subscription status changes, renewals and failed payments are reconciled automatically from Stripe webhooks.
 - Workspace state persists across browsers and devices because the source of truth is server-side.
 
 ## Production hardening after first paid pilots
 
-Before larger deployments, add verified email/SSO identity, Stripe webhook subscription reconciliation, rate limiting/abuse controls, audit logs, and a relational database schema if Teams usage outgrows the Redis document model.
+Before larger deployments, add verified email/SSO identity, rate limiting/abuse controls, audit logs, and a relational database schema if Teams usage outgrows the Redis document model.
