@@ -9,4 +9,5 @@
     return nativeFetch(input,init);
   };
   window.BEAT_AI_HOST=API_ORIGIN;
+  // CrazyGames package build trigger marker.
 })();
