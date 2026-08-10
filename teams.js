@@ -36,10 +36,29 @@
   async function verifyTeamBilling(){
     const q=new URLSearchParams(location.search),result=q.get('team_billing'),sessionId=q.get('session_id');
     if(!result)return;
-    if(result==='cancelled'){window.toast?.('Team checkout cancelled');history.replaceState({},'',location.pathname);return}
+    modal?.classList.add('open');
+    if(result==='cancelled'){
+      window.toast?.('Team checkout cancelled');
+      history.replaceState({},'',location.pathname);
+      await hydrate();
+      return;
+    }
     if(result!=='success'||!sessionId)return;
-    const ws=loadCache();if(!ws?.id||!getSession()){window.toast?.('Team billing returned, but this admin session is missing');return}
-    try{const r=await fetch(`/api/team-billing-status?teamId=${encodeURIComponent(ws.id)}&session_id=${encodeURIComponent(sessionId)}`,{headers:{Authorization:`Bearer ${getSession()}`}});const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not verify Team plan');if(d.workspace){cache(d.workspace);renderWorkspace(d.workspace)}window.toast?.(d.active?`Team plan active${d.seats?` · ${d.seats} seats`:''} ✓`:`Team billing status: ${d.status||'pending'}`)}catch(e){window.toast?.(e.message||'Could not verify Team plan')}history.replaceState({},'',location.pathname)
+    const ws=loadCache();
+    if(!ws?.id||!getSession()){
+      window.toast?.('Team billing returned, but this admin session is missing');
+      return;
+    }
+    try{
+      const r=await fetch(`/api/team-billing-status?teamId=${encodeURIComponent(ws.id)}&session_id=${encodeURIComponent(sessionId)}`,{headers:{Authorization:`Bearer ${getSession()}`}});
+      const d=await r.json();
+      if(!r.ok)throw new Error(d.error||'Could not verify Team plan');
+      if(d.workspace){cache(d.workspace);renderWorkspace(d.workspace)}
+      window.toast?.(d.active?`Team plan active${d.seats?` · ${d.seats} seats`:''} ✓`:`Team billing status: ${d.status||'pending'}`)
+    }catch(e){
+      window.toast?.(e.message||'Could not verify Team plan')
+    }
+    history.replaceState({},'',location.pathname);
   }
   async function recordLatestRun(){
     const ws=loadCache();if(!ws?.id||!getSession())return;
