@@ -1,0 +1,35 @@
+name: CrazyGames Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'index.html'
+      - 'styles.css'
+      - 'social.css'
+      - 'app.js'
+      - 'infinite-replay.js'
+      - 'teams.js'
+      - 'social.js'
+      - 'casino/**'
+      - 'crazygames/**'
+      - 'scripts/build-crazygames.js'
+      - 'package.json'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - run: npm run build:crazygames
+      - run: cd crazygames-build && zip -r ../beat-ai-crazygames.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beat-ai-crazygames
+          path: beat-ai-crazygames.zip
+          if-no-files-found: error
