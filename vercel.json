@@ -13,7 +13,6 @@
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
   "rewrites": [
-    { "source": "/", "destination": "/index.html" },
     { "source": "/games", "destination": "/index.html" },
     { "source": "/trivia", "destination": "/index.html" },
     { "source": "/play", "destination": "/index.html" },
