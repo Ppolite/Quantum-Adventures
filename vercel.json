@@ -14,6 +14,9 @@
   ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
+    { "source": "/games", "destination": "/index.html" },
+    { "source": "/trivia", "destination": "/index.html" },
+    { "source": "/play", "destination": "/index.html" },
     { "source": "/casino", "destination": "/casino/index.html" },
     { "source": "/casino/blackjack", "destination": "/casino/play.html?game=blackjack" },
     { "source": "/casino/poker", "destination": "/casino/play.html?game=poker" }
