@@ -12,11 +12,17 @@
     { "src": "beat-ai/**", "use": "@vercel/static" },
     { "src": "api/*.js", "use": "@vercel/node" }
   ],
+  "redirects": [
+    { "source": "/beat-ai/casino/index.html", "destination": "/casino/play?game=blackjack", "permanent": false },
+    { "source": "/beat-ai/casino/poker-arena.html", "destination": "/casino/play?game=poker", "permanent": false }
+  ],
   "rewrites": [
     { "source": "/", "destination": "/index.html" },
     { "source": "/casino", "destination": "/casino/index.html" },
-    { "source": "/casino/play", "destination": "/beat-ai/casino/index.html" },
-    { "source": "/casino/poker-arena", "destination": "/beat-ai/casino/poker-arena.html" }
+    { "source": "/casino/play", "destination": "/casino/play.html" },
+    { "source": "/casino/internal-blackjack", "destination": "/beat-ai/casino/index.html" },
+    { "source": "/casino/internal-poker", "destination": "/beat-ai/casino/poker-arena.html" },
+    { "source": "/casino/poker-arena", "destination": "/casino/play.html?game=poker" }
   ],
   "headers": [
     {
