@@ -4,6 +4,8 @@
   "description": "Beat AI — Human vs Machine challenge game",
   "main": "app.js",
   "scripts": {
+    "build": "node scripts/build-vercel.js",
+    "vercel-build": "node scripts/build-vercel.js",
     "test": "node test.js && node scripts/smoke-test.js"
   },
   "repository": {
