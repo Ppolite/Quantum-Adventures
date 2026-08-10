@@ -3,6 +3,7 @@ const {getJson,bearer}=require('./team-store');
 const teamKey=id=>`beat-ai:team:${id}`;
 const MIN_TEAM_SEATS=10;
 const MAX_TEAM_SEATS=5000;
+const CANONICAL_SITE='https://beatai.games';
 
 module.exports=async(req,res)=>{
   try{
@@ -21,14 +22,15 @@ module.exports=async(req,res)=>{
     if(!teamPriceId)return res.status(500).json({error:'STRIPE_TEAM_PRICE_ID is missing'});
     if(!teamPriceId.startsWith('price_'))return res.status(500).json({error:'STRIPE_TEAM_PRICE_ID must be a Stripe price_ ID'});
 
-    const origin=`${req.headers['x-forwarded-proto']||'https'}://${req.headers.host}`;
     const qty=Math.max(MIN_TEAM_SEATS,Math.min(MAX_TEAM_SEATS,Math.floor(Number(seats)||MIN_TEAM_SEATS)));
+    const successUrl=`${CANONICAL_SITE}/?team_billing=success&session_id={CHECKOUT_SESSION_ID}`;
+    const cancelUrl=`${CANONICAL_SITE}/?team_billing=cancelled`;
     const body=qs.stringify({
       mode:'subscription',
       'line_items[0][price]':teamPriceId,
       'line_items[0][quantity]':qty,
-      success_url:`${origin}/?team_billing=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url:`${origin}/?team_billing=cancelled`,
+      success_url:successUrl,
+      cancel_url:cancelUrl,
       client_reference_id:teamId,
       'metadata[app]':'beat-ai',
       'metadata[tier]':'teams',
@@ -50,7 +52,7 @@ module.exports=async(req,res)=>{
     });
     const d=await r.json();
     if(!r.ok)return res.status(r.status).json({error:d.error?.message||'Stripe error'});
-    return res.status(200).json({url:d.url,id:d.id,seats:qty,priceId:teamPriceId});
+    return res.status(200).json({url:d.url,id:d.id,seats:qty,priceId:teamPriceId,successUrl,cancelUrl});
   }catch(e){
     return res.status(500).json({error:e.message||'Teams checkout failed'});
   }
