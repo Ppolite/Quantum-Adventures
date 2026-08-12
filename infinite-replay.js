@@ -61,6 +61,8 @@
   function updateFreePackUI(){
     const practice=document.getElementById('practiceBtn');
     const hero=document.getElementById('play');
+    const heroTop=document.getElementById('heroPlay');
+    const sticky=document.getElementById('stickyPlay');
     const status=document.getElementById('status');
     const pro=isPro();
     const left=freePacksLeft();
@@ -69,20 +71,28 @@
       practice.classList.toggle('locked',!pro&&left===0);
       if(small)small.textContent=pro?'PRO · Unlimited fresh 15-question AI packs · no exact repeats on this profile.':left>0?`FREE · ${left} pack${left===1?'':'s'} left · 15 fresh questions each.`:'PRO · Your 3 free packs are used.';
     }
+    const launchInstant=()=>{window.beatTrack?.('instant_cta_clicked',{surface:'home'});return originalStart('daily')};
+    const launchFresh=()=>{window.beatTrack?.('fresh_pack_cta_clicked',{surface:'home'});return infiniteStart('practice')};
+    [heroTop,sticky].forEach(button=>{
+      if(!button)return;
+      button.onclick=pro?launchFresh:launchInstant;
+      if(button===heroTop)button.textContent=pro?'PLAY A FRESH 15 →':'START FREE 5-QUESTION BATTLE →';
+      if(button===sticky)button.innerHTML=pro?'<span>✦ PRO FRESH PACK</span><b>PLAY 15 →</b>':'<span>⚡ FREE INSTANT BATTLE</span><b>PLAY NOW →</b>';
+    });
     if(hero){
       if(pro){
         hero.textContent='PLAY A FRESH 15 →';
-        hero.onclick=()=>infiniteStart('practice');
+        hero.onclick=launchFresh;
       }else if(left>0){
-        hero.textContent="PLAY TODAY'S 15 →";
-        hero.onclick=()=>infiniteStart('practice');
+        hero.textContent='START FREE 5-QUESTION BATTLE →';
+        hero.onclick=launchInstant;
       }else{
         hero.textContent='GO PRO — UNLOCK UNLIMITED →';
         hero.onclick=launchPro;
       }
     }
     if(status){
-      status.textContent=pro?'Pro active · unlimited fresh 15-question packs unlocked.':left>0?`${left} free 15-question pack${left===1?'':'s'} remaining.`:'Free packs complete. Go Pro for unlimited 15-question packs.';
+      status.textContent=pro?'Pro active · unlimited fresh 15-question packs unlocked.':left>0?`Instant battle is free · plus ${left} fresh 15-question pack${left===1?'':'s'} remaining.`:'Instant daily battle stays free · Go Pro for unlimited fresh packs.';
     }
   }
 

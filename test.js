@@ -25,16 +25,16 @@ const api={
   stripeWebhook:read('api/stripe-webhook.js')
 };
 
-for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard']){
+for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard','heroPlay','stickyPlay']){
   assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 }
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
 for(const token of ['hero-rival','visual-modes','cinematic-card','Turn AI literacy into a team sport','SHARED PRIVATE LEAGUE'])assert(html.includes(token),`missing homepage/Teams token: ${token}`);
-for(const token of ['.hero-juiced','.visual-modes','.cinematic-card','.workspace-board'])assert(css.includes(token),`missing style: ${token}`);
+for(const token of ['.hero-juiced','.visual-modes','.cinematic-card','.workspace-board','.hero-conversion','.sticky-play'])assert(css.includes(token),`missing style: ${token}`);
 assert(socialCss.includes('.social-grid')&&socialCss.includes('.challenge-banner'),'social styles missing');
 
 for(const source of [app,replay,teams,social])new Function(source);
-for(const hook of ['beginCheckout','verifySession','openPortal','renderAchievements','renderSkills'])assert(app.includes(hook),`missing client behavior: ${hook}`);
+for(const hook of ['beginCheckout','verifySession','openPortal','renderAchievements','renderSkills','landing_view','battle_started','question_answered','battle_completed','checkout_started'])assert(app.includes(hook),`missing client behavior: ${hook}`);
 
 // Fresh Packs + battle layer
 for(const token of ['/api/practice','beatAIRecentQuestionsV2','MAX_HISTORY=2000','requireFresh:true','AVOID_WINDOW=300','buildPack(3','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','PLAY A FRESH 15 →','GO PRO — UNLOCK UNLIMITED →','battleHud','power5050','powerShield','powerDouble','COMBO ×','syncProEntitlement','/api/subscription-status']){
