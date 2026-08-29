@@ -35,7 +35,7 @@
   function consumeFreePack(){const used=Math.min(FREE_PACK_LIMIT,freePacksUsed()+1);localStorage.setItem(freePackKey,String(used));updateFreePackUI();return FREE_PACK_LIMIT-used}
   function isPro(){try{return typeof billing==='function'&&billing().tier==='pro'}catch{return false}}
   function launchPro(){
-    if(typeof beginCheckout==='function')return beginCheckout();
+    if(typeof beginCheckout==='function')return beginCheckout('fresh-pack-limit');
     const proBtn=document.getElementById('proBtn');
     if(proBtn)return proBtn.click();
     toast?.('Beat AI Pro unlocks unlimited fresh 15-question packs ✦');
@@ -199,8 +199,9 @@
     refreshPowerUI();
   }
 
-  function afterAnswer(i,ok){
-    if(ok){
+  function afterAnswer(i,ok,botOk){
+    const humanWin=ok&&!botOk,aiWin=botOk&&!ok;
+    if(humanWin){
       battle.combo++;
       battle.bestCombo=Math.max(battle.bestCombo,battle.combo);
       const multiplier=battle.double?2:1;
@@ -209,12 +210,15 @@
       if(battle.double){battle.double=false;try{state.score+=100;document.getElementById('points').textContent=`${Math.max(0,Math.round(state.score))} pts`}catch{}toast?.('DOUBLE STRIKE! 💥')}
       if(battle.combo>=3){try{const bonus=25*(battle.combo-2);state.score+=bonus;document.getElementById('points').textContent=`${Math.max(0,Math.round(state.score))} pts`}catch{}}
       const taunt=document.getElementById('taunt');if(taunt&&battle.combo>=4)taunt.textContent='Okay. You are becoming a statistical problem.';
-    }else{
+    }else if(aiWin){
       battle.combo=0;
       if(battle.shield){battle.shield=false;toast?.('Shield absorbed the hit 🛡')}
       else battle.human=Math.max(0,battle.human-(battle.mode==='boss'?14:11));
       battle.double=false;
       const taunt=document.getElementById('taunt');if(taunt)taunt.textContent=battle.human<=30?'Human systems approaching critical.':'Pattern detected: human overconfidence.';
+    }else{
+      battle.double=false;
+      const taunt=document.getElementById('taunt');if(taunt)taunt.textContent=ok?'Both systems landed it. No damage.':'We both missed. Pretend nobody saw that.';
     }
     updateBattleUI();
   }
@@ -224,8 +228,10 @@
       const c=currentChallenge();
       const alreadyAnswered=document.getElementById('next')?.style.display==='block';
       const ok=!alreadyAnswered&&!!c&&i===c.answer;
+      const bot=(!alreadyAnswered&&c&&typeof window.getBotDecision==='function')?window.getBotDecision(c,state.round):null;
+      const botOk=!!c&&bot?.answer===c.answer;
       const out=originalAnswer.call(this,i);
-      if(!alreadyAnswered&&c)afterAnswer(i,ok);
+      if(!alreadyAnswered&&c)afterAnswer(i,ok,botOk);
       return out;
     };
   }
@@ -253,7 +259,7 @@
         toast?.(left?`${left} free 15-question pack${left===1?'':'s'} left`:'Free pack #3 complete — Go Pro for unlimited 15-question packs ✦');
       }
       clearInterval(timer);
-      state={round:0,correct:0,score:0,marks:[],mode,start:Date.now(),cats:{},roundLimit:mode==='practice'?FREE_PACK_ROUNDS:daily.length};
+      state={round:0,correct:0,aiCorrect:0,humanRounds:0,aiRounds:0,score:0,marks:[],mode,start:Date.now(),cats:{},botPicks:[],roundLimit:mode==='practice'?FREE_PACK_ROUNDS:daily.length};
       confidence=1;
       resetBattle(mode);
       window.totalRounds=()=>state.roundLimit||daily.length||5;

@@ -9,6 +9,7 @@ const checkout=fs.readFileSync('api/checkout.js','utf8');
 assert(checkout.includes("metadata[tier]','pro"),'checkout must tag Pro tier');
 assert(checkout.includes("fresh-packs-unlimited"),'checkout must tag Fresh Pack entitlement');
 assert(checkout.includes("https://beatai.games"),'checkout must return to production domain by default');
+assert(checkout.includes('custom_text[submit][message]'),'checkout must identify the Beat AI purchase');
 
 const status=fs.readFileSync('api/billing-status.js','utf8');
 assert(status.includes("meta.app==='beat-ai'"),'billing verification must validate Beat AI app metadata');
@@ -25,5 +26,11 @@ assert(replay.includes('battleHud'),'battle HUD must be present');
 assert(replay.includes('power5050'),'50/50 power-up must be present');
 assert(replay.includes('powerShield'),'shield power-up must be present');
 assert(replay.includes('powerDouble'),'double-strike power-up must be present');
+
+const app=fs.readFileSync('app.js','utf8');
+assert(app.includes('getBotDecision'),'AI rival must lock an independent answer');
+assert(app.includes('beat-ai:result-ready'),'completed results must refresh share surfaces');
+const scores=fs.readFileSync('api/scores.js','utf8');
+assert(scores.includes('Math.min(50000'),'leaderboard must preserve confidence and combo scores');
 
 console.log('Beat AI smoke tests passed.');

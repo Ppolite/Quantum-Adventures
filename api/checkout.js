@@ -19,6 +19,7 @@ module.exports=async(req,res)=>{
     params.set('success_url',`${CANONICAL_SITE_URL}/?billing=success&session_id={CHECKOUT_SESSION_ID}`);
     params.set('cancel_url',`${CANONICAL_SITE_URL}/?billing=cancelled`);
     params.set('allow_promotion_codes','true');
+    params.set('custom_text[submit][message]','You are subscribing to Beat AI Pro at beatai.games. Cancel anytime from the billing portal.');
     params.set('metadata[app]','beat-ai');
     params.set('metadata[tier]','pro');
     params.set('metadata[entitlement]','fresh-packs-unlimited');
