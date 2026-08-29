@@ -9,6 +9,7 @@
   function profileData(){try{return typeof profile==='function'?profile():{}}catch{return{}}}
   function shareKind(){const t=currentTarget(),p=profileData(),incoming=incomingChallenge();if(incoming&&Date.now()-(incoming.openedAt||0)<86400000)return'challenge';if(t.correct===t.total)return'achievement';if((p.streak||0)>=7)return'streak';return'victory'}
   function cardUrl(){const t=currentTarget(),p=profileData(),u=new URL('/api/share-card',SITE);u.searchParams.set('name',playerName());u.searchParams.set('score',t.correct);u.searchParams.set('total',t.total);u.searchParams.set('marks',t.marks||'');u.searchParams.set('streak',p.streak||0);u.searchParams.set('rating',p.rating||1000);u.searchParams.set('kind',shareKind());return u.toString()}
+  function refreshSharePreview(){const preview=byId('sharePreview');if(!preview)return;const u=new URL(cardUrl());u.searchParams.set('v',String(Date.now()));preview.src=u.toString();preview.alt=`Beat AI result: ${currentTarget().correct} of ${currentTarget().total}`}
   function challengeUrl(){const t=currentTarget(),u=new URL(SITE);u.searchParams.set('challenge','1');u.searchParams.set('beat',`${t.correct}-${t.total}`);u.searchParams.set('mode',t.mode||'daily');u.searchParams.set('ref',referralId());u.searchParams.set('from',playerName());u.searchParams.set('card',shareKind());u.searchParams.set('score',t.correct);u.searchParams.set('total',t.total);return u.toString()}
   function shareCopy(){const t=currentTarget(),p=profileData(),grid=t.marks?`\n${t.marks} ${t.correct}/${t.total}`:`\nScore: ${t.correct}/${t.total}`;const kind=shareKind();const lead=kind==='challenge'?'I accepted a Beat AI challenge.':t.correct===t.total?'Perfect run — I beat AI today.':`I beat AI today: ${t.correct}/${t.total}.`;return`${lead}${grid}\n🧠 ${p.rating||1000} Arena • 🔥 ${p.streak||0} day streak\nThink you can do better? ${challengeUrl()}`}
   function bumpShare(network){const key='beatAISocialStats',s=JSON.parse(localStorage.getItem(key)||'{}');s[network]=(s[network]||0)+1;s.total=(s.total||0)+1;s.lastSharedAt=Date.now();localStorage.setItem(key,JSON.stringify(s))}
@@ -30,7 +31,7 @@
     document.head.appendChild(style);
     modegrid.appendChild(card);
   }
-  function wire(){byId('share')&&(byId('share').onclick=nativeShare);byId('friendBtn')&&(byId('friendBtn').onclick=nativeShare);document.querySelectorAll('[data-social]').forEach(btn=>btn.onclick=()=>shareTo(btn.dataset.social));const preview=byId('sharePreview');if(preview){preview.src=cardUrl();preview.alt='Beat AI personalized share preview'}readIncomingChallenge();addCasinoEntry()}
+  function wire(){byId('share')&&(byId('share').onclick=nativeShare);byId('friendBtn')&&(byId('friendBtn').onclick=nativeShare);document.querySelectorAll('[data-social]').forEach(btn=>btn.onclick=()=>shareTo(btn.dataset.social));refreshSharePreview();window.addEventListener('beat-ai:result-ready',refreshSharePreview);readIncomingChallenge()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',wire);else wire();
-  window.BeatAISocial={challengeUrl,cardUrl,shareCopy,shareTo};
+  window.BeatAISocial={challengeUrl,cardUrl,shareCopy,shareTo,refreshSharePreview};
 })();

@@ -25,7 +25,7 @@ const api={
   stripeWebhook:read('api/stripe-webhook.js')
 };
 
-for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard','heroPlay','stickyPlay']){
+for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','resultUpgradeBtn','proOfferModal','confirmCheckoutBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard','heroPlay','stickyPlay']){
   assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 }
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
@@ -34,7 +34,7 @@ for(const token of ['.hero-juiced','.visual-modes','.cinematic-card','.workspace
 assert(socialCss.includes('.social-grid')&&socialCss.includes('.challenge-banner'),'social styles missing');
 
 for(const source of [app,replay,teams,social])new Function(source);
-for(const hook of ['beginCheckout','verifySession','openPortal','renderAchievements','renderSkills','landing_view','battle_started','question_answered','battle_completed','checkout_started'])assert(app.includes(hook),`missing client behavior: ${hook}`);
+for(const hook of ['getBotDecision','botPicks','aiCorrect','humanRounds','beginCheckout','createCheckout','pro_offer_viewed','beat-ai:result-ready','verifySession','openPortal','renderAchievements','renderSkills','landing_view','battle_started','question_answered','battle_completed','checkout_started'])assert(app.includes(hook),`missing client behavior: ${hook}`);
 
 // Fresh Packs + battle layer
 for(const token of ['/api/practice','beatAIRecentQuestionsV2','MAX_HISTORY=2000','requireFresh:true','AVOID_WINDOW=300','buildPack(3','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','PLAY A FRESH 15 →','GO PRO — UNLOCK UNLIMITED →','battleHud','power5050','powerShield','powerDouble','COMBO ×','syncProEntitlement','/api/subscription-status']){
@@ -59,6 +59,10 @@ for(const token of ['STRIPE_WEBHOOK_SECRET','stripe-signature','checkout.session
 for(const network of ['twitter.com/intent/tweet','facebook.com/sharer/sharer.php','reddit.com/submit','wa.me/'])assert(social.includes(network),`missing social share target: ${network}`);
 assert(api.shareCard.includes('image/svg+xml'),'share card does not return an image');
 assert(api.daily.includes('category')&&api.daily.includes('aiTake'),'daily API lacks challenge metadata');
+assert(api.daily.includes('aiAnswer')&&api.practice.includes('aiConfidence'),'AI packs do not include independent rival decisions');
+assert(api.scores.includes('Math.min(50000'),'leaderboard still truncates valid multiplied scores');
+assert(social.includes('refreshSharePreview')&&social.includes('beat-ai:result-ready'),'share preview is not refreshed from the completed result');
+assert(api.checkout.includes('custom_text[submit][message]'),'checkout is missing Beat AI purchase context');
 
 for(const [name,source] of Object.entries(api)){
   new Function('require','module','exports',source);
