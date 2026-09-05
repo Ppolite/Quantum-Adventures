@@ -1,92 +1,235 @@
+'use strict';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
-const today=new Date().toISOString().slice(0,10),screens=['home','game','result'];
-const seasonNo=Math.max(1,Math.floor((Date.now()-Date.UTC(2026,7,1))/(30*86400000))+1);
-let daily=[],timer=null,confidence=1,state={round:0,correct:0,aiCorrect:0,humanRounds:0,aiRounds:0,score:0,marks:[],mode:'daily',start:0,cats:{},botPicks:[]};
-
-const fallback=[
-{type:'LOGIC DUEL',category:'Logic',q:'A farmer has 17 sheep. All but 9 run away. How many remain?',sub:'The obvious arithmetic answer is a trap.',options:['8','9','17','26'],answer:1,why:'“All but 9” means 9 stayed.',aiTake:'I over-weighted subtraction instead of parsing the phrase.'},
-{type:'PATTERN HACK',category:'Patterns',q:'What comes next: 1, 11, 21, 1211, 111221, ?',sub:'Read the previous number aloud.',options:['312211','122211','1113213211','311221'],answer:0,why:'111221 is three 1s, two 2s, one 1 → 312211.',aiTake:'The sequence describes the previous term rather than doing arithmetic.'},
-{type:'TRUTH TEST',category:'Reasoning',q:'Which statement is definitely true?',sub:'No browsing. Just reasoning.',options:['Every prime is odd.','Some even numbers are prime.','Every square is even.','Negative numbers cannot be squared.'],answer:1,why:'2 is both even and prime.',aiTake:'The universal claims collapse under simple counterexamples.'},
-{type:'AI LANGUAGE TRAP',category:'Language',q:'Which phrase is the stronger clue text may be AI-written?',sub:'Neither proves anything alone.',options:['I dunno, it felt weird.','In today’s rapidly evolving landscape…','Honestly, I missed the bus.','My dog ate the corner of it.'],answer:1,why:'That polished generic transition is common in generated prose.',aiTake:'Generic framing can sound polished while carrying little detail.'},
-{type:'HUMAN OR AI',category:'Language',q:'Which line sounds more AI-generated?',sub:'Pick the more generic polished sentence.',options:['I forgot my umbrella again. Classic me.','The rainfall created a profoundly atmospheric experience that enhanced my emotional connection to the environment.','My socks are soaked.','I ran back for the umbrella and missed the train.'],answer:1,why:'The abstract, over-polished language is the stronger clue.',aiTake:'The sentence stacks abstractions instead of concrete detail.'}
-];
-const impossible={type:'IMPOSSIBLE',category:'Logic',q:'Three switches are downstairs. One controls a bulb upstairs. You may go upstairs only once. How do you identify the correct switch?',sub:'Think beyond whether the bulb is simply on or off.',options:['Flip one and go upstairs','Turn one on, wait, turn it off, turn another on, then go upstairs','Turn all three on','There is no way'],answer:1,why:'The lit bulb is switch two; a warm unlit bulb is switch one; cold and unlit is switch three.',aiTake:'Heat becomes a second information channel.'};
-const personas=[{name:'Byte',face:'🤖',taunts:['Humans usually miss this one.','Try not to embarrass your species.'],win:['...Lucky.','Statistically irritating.'],lose:['That one was obvious.','Machine: 1. Ego: 0.']},{name:'Sphinx',face:'🗿',taunts:['Answer carefully, mortal.','Confidence is charming.'],win:['You may pass. For now.'],lose:['Predictable.']},{name:'Glitch',face:'👾',taunts:['beep boop skill issue','Speedrun your regret.'],win:['okay that was clean 😒'],lose:['L + ratio + artificial intelligence']}];
-const achievementDefs=[['first','First Blood','Win your first question','⚔️'],['perfect','Machine Humbled','Score 5/5','🏆'],['streak7','Habit Formed','Reach a 7-day streak','🔥'],['rating1200','Big Brain','Reach 1200 Arena rating','🧠'],['plays25','Regular Human','Complete 25 battles','🎮'],['logic10','Logic Hunter','Get 10 logic questions right','🕵️'],['boss','Boss Breaker','Defeat a weekly boss','👹'],['impossible','One Percenter','Solve the Impossible Question','☠️']];
-
-function profile(){return JSON.parse(localStorage.getItem('beatAIProfile')||'{"streak":0,"best":0,"last":"","rating":1000,"xp":0,"plays":0,"wins":0,"unlocked":[],"cats":{},"rewards":[]}')}
-function saveProfile(p){localStorage.setItem('beatAIProfile',JSON.stringify(p))}
-function billing(){return JSON.parse(localStorage.getItem('beatAIBilling')||'{"tier":"free"}')}
-function setBilling(b){localStorage.setItem('beatAIBilling',JSON.stringify(b));refreshBilling()}
-function persona(){return personas[(new Date().getUTCDate()+seasonNo)%personas.length]}
-function rand(a){return a[Math.floor(Math.random()*a.length)]}
-function hashSeed(value){let h=2166136261;for(const ch of String(value)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
-function getBotDecision(challenge,round=state.round){
-  state.botPicks||=[];
+const Engine=BeatAIEngine,Rivals=BeatAIRivals,Packs=BeatAIPacks,Questions=BeatAIQuestions,Audio=BeatAIAudio;
+const dayKey=()=>new Date().toISOString().slice(0,10),today=dayKey();
+let daily=[],dailyPool=[],dailySource='archive',timer=null,transition=null,loadController=null,launchId=0;
+let selectedRival=Rivals.list[0],remainingMs=0,deadline=0,paused=false,readHeld=false,lastTick=99;
+let state={round:0,correct:0,aiCorrect:0,humanRounds:0,aiRounds:0,score:0,marks:[],mode:'arena',start:0,cats:{},botPicks:[],battle:null};
+const escapeHtml=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function profile(){return Engine.normalizeProfile(Packs.read('beatAIProfile',{}));}
+function saveProfile(p){if(!Packs.write('beatAIProfile',p))$('#storageNotice').hidden=false;}
+function billing(){const b=Packs.read('beatAIBilling',{tier:'free'});return b&&typeof b==='object'?b:{tier:'free'};}
+function setBilling(b){Packs.write('beatAIBilling',b);refreshBilling();}
+function persona(){return state.battle?.rival||selectedRival;}
+function hashSeed(value){let h=2166136261;for(const ch of String(value)){h^=ch.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
+function getBotDecision(c,round=state.round){
   if(state.botPicks[round])return state.botPicks[round];
-  const options=Array.isArray(challenge?.options)?challenge.options:[],correct=Number(challenge?.answer)||0,seed=hashSeed(`${today}|${state.mode}|${round}|${challenge?.q||''}|${persona().name}`);
-  const wrong=options.map((_,i)=>i).filter(i=>i!==correct),rating=profile().rating||1000,difficulty=Number(challenge?.difficulty)||2;
-  const targetAccuracy=Math.max(.48,Math.min(.88,.56+(rating-900)/4000+(difficulty-2)*.045+(state.mode==='boss'?.12:0)));
-  const generatedAnswer=Number.isInteger(challenge?.aiAnswer)&&challenge.aiAnswer>=0&&challenge.aiAnswer<options.length?challenge.aiAnswer:null;
-  const answer=generatedAnswer??(((seed%1000)/1000)<targetAccuracy?correct:wrong[seed%Math.max(1,wrong.length)]??correct);
-  const confidence=Math.max(51,Math.min(96,Number(challenge?.aiConfidence)||54+(seed%43)));
-  return state.botPicks[round]={answer,confidence,lockedAt:Date.now()};
+  const rival=persona(),seed=hashSeed(`${state.runId}|${round}|${c.q}|${rival.id}`),difficulty=state.battle?.difficulty||0;
+  const accuracy=Math.min(.88,.57+difficulty*.045+(c.category===rival.specialty ? .08 : 0));
+  const supplied=Number.isInteger(c.aiAnswer)&&c.aiAnswer>=0&&c.aiAnswer<4?c.aiAnswer:null;
+  const wrong=[0,1,2,3].filter(i=>i!==c.answer),answer=supplied??((seed%1000)/1000<accuracy?c.answer:wrong[seed%wrong.length]);
+  return state.botPicks[round]={answer,confidence:Math.max(51,Math.min(96,Number(c.aiConfidence)||54+seed%40))};
 }
 window.getBotDecision=getBotDecision;
-function titleFor(xp){return xp>=5000?'Human Legend':xp>=3000?'Machine Whisperer':xp>=1800?'AI Slayer':xp>=1000?'Logic Hunter':xp>=500?'Investigator':xp>=200?'Critical Thinker':'Novice Human'}
-function levelFor(xp){return Math.floor(xp/250)+1}
-function show(id){screens.forEach(x=>$('#'+x).classList.toggle('active',x===id));document.body.dataset.screen=id;scrollTo(0,0)}
-function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');setTimeout(()=>$('#toast').classList.remove('show'),2200)}
-function acquisition(){try{return JSON.parse(localStorage.getItem('beatAIAcquisition')||'{}')}catch{return {}}}
-function captureAcquisition(){const q=new URLSearchParams(location.search),keys=['utm_source','utm_medium','utm_campaign','utm_content','fbclid'];const next={...acquisition()};keys.forEach(k=>{const v=q.get(k);if(v)next[k]=String(v).slice(0,180)});if(Object.keys(next).length)localStorage.setItem('beatAIAcquisition',JSON.stringify(next));return next}
-function track(name,data={}){try{const a=acquisition();window.va?.('event',{name,data:{...data,source:a.utm_source||'direct',campaign:a.utm_campaign||'none',content:a.utm_content||'none'}})}catch{}}
+function levelFor(xp){return Math.floor(xp/250)+1;}
+function titleFor(xp){return xp>=5000?'Human Legend':xp>=1800?'Machine Breaker':xp>=500?'Rising Threat':'Human Challenger';}
+function show(id){$$('.screen').forEach(x=>x.classList.toggle('active',x.id===id));document.body.dataset.screen=id;scrollTo(0,0);}
+let toastTimer;
+function toast(text){$('#toast').textContent=text;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3200);}
+function acquisition(){return Packs.read('beatAIAcquisition',{});}
+function captureAcquisition(){const q=new URLSearchParams(location.search),a=acquisition();for(const key of ['utm_source','utm_medium','utm_campaign','utm_content','fbclid'])if(q.get(key))a[key]=q.get(key).slice(0,180);Packs.write('beatAIAcquisition',a);}
+function track(name,data={}){try{const a=acquisition();window.va?.('event',{name,data:{...data,source:a.utm_source||'direct',campaign:a.utm_campaign||'none'}});}catch{}}
 window.beatTrack=track;
 
-function refresh(){const p=profile(),pe=persona();const r=p.best?Math.max(1,8400-Math.floor(((p.rating||1000)-900)*4.4)-(p.streak||0)*21):'—';$('#streak').textContent=`${p.streak||0} 🔥`;$('#best').textContent=p.best?`${p.best}/5`:'—';$('#rating').textContent=p.rating||1000;$('#ratingTop').textContent=p.rating||1000;$('#rank').textContent=r==='—'?'#—':`#${r.toLocaleString()}`;$('#titleBadge').textContent=titleFor(p.xp||0).toUpperCase();$('#seasonText').textContent=`Season ${seasonNo} • Level ${levelFor(p.xp||0)}`;$('#personaHome').textContent=`${pe.face} ${pe.name} — “${pe.taunts[1]||pe.taunts[0]}”`;renderFeed();refreshBilling()}
-function refreshBilling(){const b=billing(),pro=b.tier==='pro';$$('[data-promode]').forEach(x=>x.classList.toggle('locked',!pro));$('#proBtn').textContent=pro?'✦ PRO ✓':'✦ PRO';$('#proTitle').textContent=pro?'Beat AI Pro Active':'Join Beat AI Pro';$('#proCopy').textContent=pro?'Your Human Resistance membership is active on this device.':'Unlimited fresh battles, Lightning Mode, Boss Battles and deeper skill tracking.';$('#upgradeBtn').hidden=pro;$('#restoreBtn').hidden=pro;$('#manageBtn').hidden=!(pro&&b.customerId);const mid=$('#midgamePro');if(mid)mid.hidden=pro;const resultUpgrade=$('#resultUpgradeBtn');if(resultUpgrade)resultUpgrade.hidden=pro}
-
-function beginCheckout(surface=document.body.dataset.screen||'unknown'){
-  if(billing().tier==='pro'){toast('Beat AI Pro is already active ✦');return}
-  const modal=$('#proOfferModal'),context=$('#proOfferContext'),p=profile();
-  if(context)context.textContent=surface==='result'?`You just finished a real duel. Pro gives you unlimited fresh rivals, Lightning Mode, Boss Battles and a deeper skill breakdown.`:`You have ${p.plays||0} battle${p.plays===1?'':'s'} on this device. Pro unlocks unlimited fresh opponents and the full arena.`;
-  if(modal){modal.classList.add('open');modal.setAttribute('aria-hidden','false');track('pro_offer_viewed',{surface,plays:p.plays||0});return}
-  createCheckout();
+function available(r){return r.pro?billing().tier==='pro':profile().arenaWins>=r.unlock;}
+function refresh(){
+  const p=profile();$('#ratingTop').textContent=`LV ${levelFor(p.xp)}`;$('#titleBadge').textContent=titleFor(p.xp);$('#seasonText').textContent=`LEVEL ${levelFor(p.xp)}`;
+  $('#homeXp').style.width=`${p.xp%250/2.5}%`;$('#homeXpLabel').textContent=`${250-p.xp%250} XP to next level`;
+  $('#streak').textContent=p.streak;$('#wins').textContent=p.arenaWins;$('#winStreak').textContent=p.winStreak;$('#rating').textContent=p.rating;
+  $('#feed').textContent=p.lastBattle?`${p.lastBattle.outcome==='win'?'You defeated':'You fell to'} ${p.lastBattle.rival} · ${p.lastBattle.correct}/${p.lastBattle.total} correct · ${p.lastBattle.combo} answer streak`:'Your first rival is waiting. Give it something to remember.';
+  renderRivals();refreshBilling();renderSkills();renderAchievements();
+}
+function renderRivals(){
+  $('#rivalRoster').innerHTML=Rivals.list.map((r,i)=>{const unlocked=available(r),selected=r.id===selectedRival.id;return `<button class="rival-choice ${selected?'selected':''} ${unlocked?'':'locked'}" data-rival="${r.id}" aria-pressed="${selected}" aria-label="${r.name}${unlocked?', select rival':r.pro?', Pro boss':`, unlock at ${r.unlock} wins`}" style="--rival:${r.color}">${Rivals.portrait(r.id)}<span class="rival-number">0${i+1}</span><b>${r.name}</b><small>${unlocked?(r.pro?'PRO BOSS':'READY TO FIGHT'):r.pro?'PRO BOSS':`${r.unlock} WINS TO UNLOCK`}</small></button>`;}).join('');
+  $$('[data-rival]').forEach(button=>button.onclick=()=>selectRival(button.dataset.rival));
+  const r=selectedRival;$('#heroPortrait').innerHTML=Rivals.portrait(r.id);$('#heroRivalName').textContent=r.name;$('#heroRivalTitle').textContent=r.title;
+  $('#heroTaunt').textContent=Rivals.line(r,profile().rivals[r.id]?.plays?'rematch':'intro');
+  $('#heroWeakness').textContent=r.weakness;$('#heroTempo').textContent=`${r.seconds}s`;document.documentElement.style.setProperty('--rival',r.color);
+  $('#heroPlay').textContent=r.pro?'CHALLENGE OMNI  ↗':`FIGHT ${r.name}  ↗`;
+  const next=Rivals.list.find(x=>!x.pro&&x.unlock>profile().arenaWins);$('#unlockNext').textContent=next?`${next.name} unlocks in ${next.unlock-profile().arenaWins} win${next.unlock-profile().arenaWins===1?'':'s'}`:'All arena rivals unlocked. Keep your streak alive.';
+}
+function selectRival(id){const r=Rivals.list.find(x=>x.id===id);if(!r)return;if(r.pro&&!available(r))return beginCheckout('boss-roster');if(!available(r))return toast(`${r.name} unlocks at ${r.unlock} arena wins. You have ${profile().arenaWins}.`);selectedRival=r;Packs.write('beatAISelectedRival',id);renderRivals();Audio.unlock();}
+function refreshBilling(){
+  const b=billing(),pro=b.tier==='pro';$('#proBtn').textContent=pro?'PRO ✓':'GET PRO';$('#proTitle').textContent=pro?'RESISTANCE. REINFORCED.':'TAKE ON THE WHOLE MACHINE.';
+  $('#proCopy').textContent=pro?'Your existing BeatAI Pro subscription covers the arena and casino.':'Unlimited generated Fresh Packs. Lightning. OMNI boss battles. Casino Pro. One subscription.';
+  $('#upgradeBtn').hidden=pro;$('#restoreBtn').hidden=pro;$('#manageBtn').hidden=!(pro&&b.customerId);$('#resultUpgradeBtn').hidden=pro;
+  $('#practiceStatus').textContent=pro?'Unlimited with Pro':`${Packs.left()} of 3 free packs left`;
+  $('#status').textContent=pro?'PRO ACTIVE · ALL MODES UNLOCKED':'FREE ARENA · NO SIGNUP · YOUR PROGRESS SAVES HERE';
+  $$('[data-promode]').forEach(x=>x.classList.toggle('locked',!pro));
+}
+let checkoutPending=false;
+function beginCheckout(surface='home'){
+  if(billing().tier==='pro')return toast('BeatAI Pro is active. All modes are unlocked.');
+  $('#proOfferContext').textContent='Your Pro membership unlocks unlimited generated Fresh Packs, Lightning, OMNI boss battles, and Casino Pro. The free arena stays free.';
+  openModal('proOfferModal');track('pro_offer_viewed',{surface,plays:profile().plays});
 }
 async function createCheckout(){
-  track('checkout_started',{surface:document.body.dataset.screen||'unknown',plays:profile().plays||0});
-  try{
-    toast('Opening secure Pro checkout…');
-    const email=localStorage.getItem('beatAIEmail')||'';
-    const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});
-    const d=await r.json();
-    if(!r.ok||!d.url)throw new Error(d.error||'Checkout unavailable');
-    location.href=d.url;
-  }catch(e){toast(e?.message||'Could not open Pro checkout')}
+  if(checkoutPending)return;checkoutPending=true;$('#confirmCheckoutBtn').disabled=true;$('#checkoutError').hidden=true;
+  track('checkout_started',{surface:document.body.dataset.screen||'unknown',plays:profile().plays});
+  try{const email=localValue('beatAIEmail');const r=await fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email})});const d=await r.json();if(!r.ok||!d.url)throw new Error(d.error||'Checkout unavailable');location.href=d.url;}
+  catch(e){$('#checkoutError').textContent=e.message||'Could not open checkout. Please try again.';$('#checkoutError').hidden=false;}
+  finally{checkoutPending=false;$('#confirmCheckoutBtn').disabled=false;}
 }
-async function verifySession(){const q=new URLSearchParams(location.search),sessionId=q.get('session_id');if(!sessionId)return;try{const r=await fetch('/api/billing-status?session_id='+encodeURIComponent(sessionId));const d=await r.json();if(r.ok&&d.active){setBilling({tier:'pro',customerId:d.customerId||'',subscriptionId:d.subscriptionId||'',status:d.status||'active'});toast('Beat AI Pro unlocked ✦')}history.replaceState({},'',location.pathname)}catch{}}
-async function openPortal(){const b=billing();if(!b.customerId){toast('No billing account found on this device');return}try{const r=await fetch('/api/billing-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerId:b.customerId})});const d=await r.json();if(!r.ok||!d.url)throw new Error(d.error||'Portal unavailable');location.href=d.url}catch(e){toast(e?.message||'Could not open billing portal')}}
+function localValue(key){try{return localStorage.getItem(key)||'';}catch{return '';}}
+async function verifySession(){
+  const q=new URLSearchParams(location.search),sessionId=q.get('session_id');if(!sessionId||q.has('team_billing'))return;
+  try{const r=await fetch('/api/billing-status?session_id='+encodeURIComponent(sessionId));const d=await r.json();if(r.ok&&d.active){setBilling({tier:'pro',customerId:d.customerId||'',subscriptionId:d.subscriptionId||'',status:d.status||'active'});toast('BeatAI Pro unlocked. Welcome to the resistance.');history.replaceState({},'',location.pathname);}else toast('Purchase not verified yet. Keep this success link and try reloading.');}catch{toast('Could not verify your purchase. Keep this success link to retry.');}
+}
+async function openPortal(){const b=billing();if(!b.customerId)return toast('Open your original checkout success link to restore this device.');try{const r=await fetch('/api/billing-portal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customerId:b.customerId})});const d=await r.json();if(!r.ok||!d.url)throw new Error(d.error||'Portal unavailable');location.href=d.url;}catch(e){toast(e.message||'Could not open billing portal');}}
 
-async function loadDaily(){try{const r=await fetch('/api/daily');const d=await r.json();daily=Array.isArray(d.challenges)&&d.challenges.length===5?d.challenges.map((x,i)=>({...x,category:x.category||fallback[i].category,aiTake:x.aiTake||x.why})):fallback;$('#status').textContent=d.source==='generated'?'Fresh AI challenge ready.':'Today’s challenge ready.'}catch{daily=fallback;$('#status').textContent='Challenge ready — fallback mode.'}}
-function requirePro(action){if(billing().tier==='pro')return action();toast('That mode is a Beat AI Pro perk ✦');beginCheckout('locked-mode')}
-function start(mode='daily'){clearInterval(timer);if(['practice','lightning','boss'].includes(mode)&&billing().tier!=='pro')return requirePro(()=>start(mode));track('battle_started',{mode});state={round:0,correct:0,aiCorrect:0,humanRounds:0,aiRounds:0,score:0,marks:[],mode,start:Date.now(),cats:{},botPicks:[]};confidence=1;if(mode==='practice')daily=[...fallback].sort(()=>Math.random()-.5);if(mode==='boss')daily=[...fallback,...fallback].sort(()=>Math.random()-.5);if(mode==='impossible')daily=[impossible];show('game');render()}
-function totalRounds(){return state.roundLimit||(state.mode==='boss'?10:state.mode==='impossible'?1:5)}
-function render(){clearInterval(timer);const total=typeof state.roundLimit==='number'?state.roundLimit:totalRounds(),c=daily[state.round]||fallback[state.round%fallback.length],pe=persona(),bot=getBotDecision(c,state.round);$('#round').textContent=`${state.round+1} / ${total}`;$('#bar').style.width=`${((state.round+1)/total)*100}%`;$('#points').textContent=`${Math.max(0,Math.round(state.score))} pts`;$('#type').textContent=`${c.type} · ${c.category||'Reasoning'}`;$('#q').textContent=c.q;$('#sub').textContent=c.sub||'';$('#feedback').style.display='none';$('#next').style.display='none';$('#answers').innerHTML=c.options.map((o,i)=>`<button class="answer" data-i="${i}">${String.fromCharCode(65+i)}. ${o}</button>`).join('');$$('.answer').forEach(b=>b.onclick=()=>answer(+b.dataset.i));$$('[data-conf]').forEach(b=>b.classList.toggle('active',+b.dataset.conf===confidence));$('#aiName').textContent=pe.name;$('#taunt').textContent=`Answer locked · ${bot.confidence}% confidence. Commit yours to reveal.`;if(state.mode==='lightning'){let left=10;$('#timerLabel').hidden=false;$('#timerLabel').textContent=`⚡ ${left.toFixed(1)} seconds`;timer=setInterval(()=>{left-=.1;$('#timerLabel').textContent=`⚡ ${Math.max(0,left).toFixed(1)} seconds`;if(left<=0){clearInterval(timer);answer(-1)}},100)}else $('#timerLabel').hidden=true}
-$$('[data-conf]').forEach(b=>b.onclick=()=>{confidence=+b.dataset.conf;$$('[data-conf]').forEach(x=>x.classList.toggle('active',x===b))});
-function sound(ok){try{const C=window.AudioContext||window.webkitAudioContext,c=new C(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=ok?660:160;g.gain.setValueAtTime(.04,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.15);o.start();o.stop(c.currentTime+.15);navigator.vibrate?.(ok?25:[35,25,35])}catch{}}
-function answer(i){if($('#next').style.display==='block')return;clearInterval(timer);const c=daily[state.round]||fallback[state.round%fallback.length],bot=getBotDecision(c,state.round),ok=i===c.answer,botOk=bot.answer===c.answer,base=100*confidence;state.correct+=ok?1:0;state.aiCorrect=(state.aiCorrect||0)+(botOk?1:0);const humanWin=ok&&!botOk,aiWin=botOk&&!ok;if(humanWin)state.humanRounds=(state.humanRounds||0)+1;if(aiWin)state.aiRounds=(state.aiRounds||0)+1;state.score+=ok?base:-Math.max(0,(confidence-1)*40);state.marks.push(ok?'🟩':'🟥');const cat=c.category||'Reasoning';state.cats[cat]??={right:0,total:0};state.cats[cat].total++;if(ok)state.cats[cat].right++;$$('.answer').forEach((b,n)=>{b.disabled=true;if(n===c.answer)b.classList.add('correct');if(n===i&&!ok)b.classList.add('wrong');if(n===bot.answer)b.classList.add('ai-pick')});const pe=persona(),humanChoice=i>=0?`${String.fromCharCode(65+i)}. ${c.options[i]}`:'No answer',botChoice=`${String.fromCharCode(65+bot.answer)}. ${c.options[bot.answer]}`,outcome=humanWin?'HUMAN WINS THE ROUND':aiWin?'AI WINS THE ROUND':ok?'BOTH CORRECT — CLASH':'BOTH MISSED — DRAW';$('#feedback').innerHTML=`<div class="duel-reveal"><span><small>YOUR ANSWER</small><b>${humanChoice}</b></span><span><small>${pe.name.toUpperCase()} · ${bot.confidence}%</small><b>${botChoice}</b></span></div><b>${outcome}</b><br>${c.why}<br><br><span class="type">Machine reasoning</span><br>${c.aiTake||c.why}<br><br><b>${pe.name}:</b> “${rand(humanWin?pe.win:pe.lose)}”`;$('#feedback').style.display='block';$('#points').textContent=`${Math.max(0,Math.round(state.score))} pts`;$('#next').style.display='block';track('question_answered',{mode:state.mode,round:state.round+1,correct:ok?1:0,ai_correct:botOk?1:0,outcome:humanWin?'human':aiWin?'ai':'draw'});sound(humanWin||ok)}
-$('#next').onclick=()=>state.round<(typeof state.roundLimit==='number'?state.roundLimit:totalRounds())-1?(state.round++,render()):finish();
+async function loadDaily(){
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  try{const r=await fetch('/api/daily',{signal:controller.signal});if(!r.ok)throw new Error('Daily unavailable');const d=await r.json();
+    // Production returns 15, not 5. A late request never replaces the active battle.
+    if(!Array.isArray(d.challenges)||d.challenges.length<5||!d.challenges.every(Questions.valid))throw new Error('Invalid daily set');
+    dailyPool=d.challenges.map(x=>({...x,category:x.category||'Reasoning'}));dailySource=d.source==='generated'||d.source==='cache'?'daily':'archive';$('#dailyStatus').textContent=`${dailySource==='daily'?'Today’s shared five':'Today’s archive five'} · rating challenge`;
+  }catch{dailyPool=Questions.bank.slice((new Date().getUTCDate()%12)*5,(new Date().getUTCDate()%12)*5+5);$('#dailyStatus').textContent='Daily service offline · archive challenge available';}
+  finally{clearTimeout(timeout);}
+}
+function stopClocks(){clearInterval(timer);clearTimeout(transition);timer=null;transition=null;}
+function goHome(){stopClocks();loadController?.abort();launchId++;paused=false;$('#pauseOverlay').hidden=true;show('home');refresh();}
+function requirePro(action){if(billing().tier==='pro')return action();beginCheckout('locked-mode');}
+async function start(mode='arena',rivalId=selectedRival.id){
+  if(['boss','lightning'].includes(mode)&&billing().tier!=='pro')return requirePro(()=>start(mode,rivalId));
+  if(mode==='practice'&&billing().tier!=='pro'&&!Packs.left())return beginCheckout('fresh-pack-limit');
+  const rival=mode==='boss'?Rivals.list.find(x=>x.id==='omni'):Rivals.list.find(x=>x.id===rivalId&&!x.pro)||Rivals.list[0];
+  if(!available(rival))return toast(`Win ${rival.unlock} arena battles to unlock ${rival.name}.`);
+  stopClocks();loadController?.abort();Audio.unlock();const request=++launchId;
+  let pack,source='archive',rounds=mode==='daily'?5:mode==='impossible'?1:7;
+  if(['practice','lightning','boss'].includes(mode)){
+    show('loading');$('#loadError').hidden=true;$('#retryLoad').hidden=true;$('#loadingActivity').hidden=false;
+    $('#loadTitle').textContent=mode==='boss'?'WAKING OMNI.':'BUILDING YOUR NEXT FIGHT.';
+    const controller=new AbortController();loadController=controller;const timeout=setTimeout(()=>controller.abort(),45000);
+    try{const parts=mode==='practice'?3:mode==='boss'?2:1;
+      const result=await Packs.buildPack(parts,mode,{signal:controller.signal,onProgress:i=>{$('#loadDetail').textContent=`Preparing question set ${i+1} of ${parts}. Checking your history for repeats…`;}});
+      if(request!==launchId||controller.signal.aborted)return;
+      if(['boss','lightning'].includes(mode)&&billing().tier!=='pro'){goHome();beginCheckout('entitlement-expired');return;}
+      pack=result.challenges;source=result.source;rounds=pack.length;
+      if(mode==='practice'&&billing().tier!=='pro')Packs.consume();
+    }catch(e){if(request!==launchId)return;$('#loadingActivity').hidden=true;$('#loadError').hidden=false;$('#loadError').textContent=e.name==='AbortError'?'The generator took too long. Your free pack was not used.':e.message;$('#retryLoad').hidden=false;$('#retryLoad').onclick=()=>start(mode,rival.id);return;}
+    finally{clearTimeout(timeout);if(loadController===controller)loadController=null;}
+  }else if(mode==='daily'){
+    pack=(dailyPool.length>=5?dailyPool:Questions.bank.slice(0,5)).slice(0,5);source=dailySource;
+  }else{
+    pack=Questions.select([...dailyPool,...Questions.bank],rounds+1,Packs.history());
+    if(pack.length<rounds){show('exhausted');return;}
+  }
+  if(request!==launchId)return;
+  daily=pack;
+  const p=profile(),played=Object.values(p.cats).reduce((n,v)=>n+(v.total||0),0),right=Object.values(p.cats).reduce((n,v)=>n+(v.right||0),0);
+  const difficulty=played>15&&right/played>.8?2:played>10&&right/played>.65?1:0;
+  state={round:0,correct:0,aiCorrect:0,humanRounds:0,aiRounds:0,score:0,marks:[],mode,start:Date.now(),cats:{},botPicks:[],roundLimit:rounds,
+    runId:window.crypto?.randomUUID?.()||`${Date.now()}-${Math.random()}`,day:dayKey(),source,battle:Engine.create({rival,mode,rounds,difficulty}),finished:false};
+  if(mode==='practice')state.battle={...state.battle,human:200,humanMax:200,ai:260,aiMax:260};
+  if(mode==='impossible')state.battle={...state.battle,human:1,humanMax:1,ai:1,aiMax:1,suddenDeath:true};
+  paused=false;$('#pauseOverlay').hidden=true;$('#battleRivalArt').innerHTML=Rivals.portrait(rival.id);$('#aiName').textContent=rival.name;
+  $('#game').style.setProperty('--rival',rival.color);$('#battleIntro').textContent=mode==='boss'?'BOSS ENCOUNTER':`YOU VS ${rival.name}`;
+  $('#battleIntro').classList.remove('enter');void $('#battleIntro').offsetWidth;$('#battleIntro').classList.add('enter');
+  show('game');track('battle_started',{mode,rival:rival.id,source});Audio.play(mode==='boss'?'boss':'intro');render();
+}
+function totalRounds(){return state.roundLimit||7;}
+function render(){
+  stopClocks();readHeld=false;lastTick=99;const b=state.battle;if(b.phase==='ended')return finish();state.round=b.round;
+  if(!daily[state.round]){const extra=Questions.select(Questions.bank,1,[...Packs.history(),...daily.map(c=>c.q)]);daily[state.round]=extra[0]||Questions.bank.find(c=>c.q!==daily[state.round-1]?.q);}
+  const c=daily[state.round];c.category=typeof c.category==='string'?c.category.slice(0,50):'Reasoning';const bot=getBotDecision(c);Packs.remember([c]);
+  $('#round').textContent=b.suddenDeath?'SUDDEN DEATH':`ATTACK ${state.round+1} / ${totalRounds()}`;$('#modeLabel').textContent=state.mode==='daily'?'DAILY CHALLENGE':state.mode==='practice'?'FRESH PACK · ENDURANCE':state.mode==='boss'?'BOSS BATTLE':state.mode==='lightning'?'LIGHTNING':'HUMAN VS AI';
+  $('#bar').style.width=`${Math.min(100,(state.round+1)/totalRounds()*100)}%`;$('#type').textContent=c.category.toUpperCase();$('#q').textContent=c.q;
+  $('#questionCard').classList.toggle('long-question',c.q.length>130||c.options.some(x=>x.length>75));
+  $('#sub').textContent=c.category===b.rival.weakness?`${b.rival.name}’S WEAKNESS · +5 DAMAGE`:state.round===0?'Correct = attack. Wrong = counter. Faster hits harder.':'Choose your attack.';
+  $('#answers').innerHTML=c.options.map((o,i)=>`<button class="answer" data-i="${i}"><span class="answer-key">${String.fromCharCode(65+i)}</span><span>${escapeHtml(o)}</span><span class="answer-check" aria-hidden="true"></span></button>`).join('');
+  $$('.answer').forEach(button=>button.onclick=()=>answer(+button.dataset.i));
+  $('#feedback').hidden=true;$('#next').hidden=true;$('#reviewAnswer').hidden=true;$('#autoAdvance').textContent='';$('#battleStage').dataset.impact='';$('#damageNumber').textContent='';
+  const r=b.rival,record=profile().rivals[r.id];
+  const talk=b.suddenDeath?'One hit settles it. No powers. No excuses.':state.round===0?Rivals.line(r,record?.plays?'rematch':'intro',record?.plays||0):b.bossPhase===2?Rivals.line(r,'phase'):b.ai<=30?Rivals.line(r,'danger'):b.combo>=3?Rivals.line(r,'combo',state.round):Rivals.line(r,'intro',state.round);
+  $('#taunt').textContent=talk;$('#botCommit').textContent=`AI ANSWER LOCKED · ${bot.confidence}% CONFIDENT`;
+  updateBattleUI();remainingMs=Engine.seconds(b)*1000;startClock();
+}
+function startClock(){deadline=performance.now()+remainingMs;clearInterval(timer);timer=setInterval(tick,80);tick();}
+function tick(){
+  if(paused||state.battle?.phase!=='asking')return;remainingMs=Math.max(0,deadline-performance.now());
+  const seconds=Math.ceil(remainingMs/1000),pct=remainingMs/(Engine.seconds(state.battle)*1000)*100;
+  $('#timerLabel').textContent=String(seconds).padStart(2,'0');$('#attackClock').style.setProperty('--time',`${pct}%`);$('#attackClock').classList.toggle('urgent',seconds<=5);
+  if(seconds<=3&&seconds!==lastTick){Audio.play('tick');lastTick=seconds;}if(remainingMs<=0)answer(-1,true);
+}
+function updateBattleUI(){
+  const b=state.battle;if(!b)return;$('#humanHp').style.width=`${b.human/b.humanMax*100}%`;$('#aiHp').style.width=`${b.ai/b.aiMax*100}%`;$('#humanHpText').textContent=b.human;$('#aiHpText').textContent=b.ai;
+  $('#humanMeter').setAttribute('aria-valuenow',b.human);$('#humanMeter').setAttribute('aria-valuemax',b.humanMax);$('#aiMeter').setAttribute('aria-valuenow',b.ai);$('#aiMeter').setAttribute('aria-valuemax',b.aiMax);
+  $('#humanFighter').classList.toggle('critical-health',b.human<=30);$('#aiFighter').classList.toggle('critical-health',b.ai<=b.aiMax*.25);
+  $('#comboText').textContent=b.combo>=2?`${b.combo} HIT COMBO`:b.combo===1?'FIRST HIT':'MAKE YOUR MOVE';$('#comboText').dataset.tier=b.combo>=4?'high':b.combo>=2?'mid':'low';
+  $('#humanStatus').textContent=b.shield?'SHIELD ARMED':b.overdrive?'OVERDRIVE ARMED':b.double?'DOUBLE STRIKE ARMED':b.human<=30?'CRITICAL · FIGHT BACK':'HUMAN · UNPREDICTABLE';
+  $('#aiStatus').textContent=b.suddenDeath?'ONE HIT TO FINISH':b.bossPhase===2?'PHASE 2 · ENRAGED':b.combo>=3?'ADAPTING · COUNTERS +4':b.mode==='boss'?'PHASE 1 · RESTRAINED':`COUNTER: ${Engine.counter(b)} HP`;
+  $('#phaseAlert').hidden=b.bossPhase!==2;$('#phaseAlert').textContent='PHASE 2 — COUNTERS +8 · CLOCK −4s';
+  $('#energyFill').style.width=`${b.energy}%`;$('#energyText').textContent=b.overdrive?'ARMED':b.energy===100?'READY':`${b.energy}%`;
+  const locked=b.phase!=='asking'||paused;
+  for(const [id,key]of [['power5050','fifty'],['powerShield','shield'],['powerDouble','double']]){const button=$('#'+id);button.disabled=locked||b.used[key]||b.suddenDeath;button.classList.toggle('armed',!!b[key]);button.setAttribute('aria-pressed',String(!!b[key]));}
+  $('#overdriveBtn').disabled=locked||b.energy<100||b.overdrive||b.suddenDeath;$('#overdriveBtn').classList.toggle('ready',b.energy===100&&!b.overdrive);$('#points').textContent=`${state.score} PTS`;
+}
+function usePower(kind){if(paused)return;const b=Engine.power(state.battle,kind,daily[state.round]?.answer);if(b===state.battle)return;state.battle=b;Audio.unlock();Audio.play(kind==='shield'?'shield':'power');
+  if(kind==='fifty')$$('.answer').forEach((x,i)=>{if(b.removed.includes(i)){x.disabled=true;x.classList.add('eliminated');}});
+  updateBattleUI();$('#sub').textContent=kind==='fifty'?'TWO WRONG ANSWERS REMOVED':kind==='shield'?'SHIELD: YOUR NEXT MISS DOES NO DAMAGE':kind==='double'?'DOUBLE STRIKE: NEXT ANSWER — HIT OR LOSE IT':'OVERDRIVE: NEXT ANSWER HITS 70% HARDER';
+}
+function answer(index,timedOut=false){
+  if(paused||state.battle?.phase!=='asking')return;const c=daily[state.round],bot=getBotDecision(c),elapsed=Engine.seconds(state.battle)*1000-Math.max(0,deadline-performance.now());
+  const b=Engine.resolve(state.battle,{index,answer:c.answer,elapsedMs:elapsed,category:c.category,botCorrect:bot.answer===c.answer,timedOut});if(b===state.battle)return;stopClocks();state.battle=b;const hit=b.last;
+  state.correct=b.correct;state.aiCorrect+=hit.botCorrect?1:0;state.humanRounds+=hit.ok?1:0;state.aiRounds+=hit.ok?0:1;state.score=b.score;state.marks.push(hit.ok?'🟩':'🟥');if(!Object.hasOwn(state.cats,c.category))Object.defineProperty(state.cats,c.category,{value:{right:0,total:0},enumerable:true,writable:true});state.cats[c.category].total++;if(hit.ok)state.cats[c.category].right++;
+  $$('.answer').forEach((button,n)=>{button.disabled=true;if(n===c.answer){button.classList.add('correct');button.querySelector('.answer-check').textContent='✓';}if(n===hit.index&&!hit.ok){button.classList.add('wrong');button.querySelector('.answer-check').textContent='×';}});
+  updateBattleUI();const label=hit.blocked?'SHIELD BLOCK':hit.timeout?'TIME’S UP':hit.ok?(b.outcome==='win'?'KNOCKOUT':hit.overdrive?'OVERDRIVE':hit.double?'DOUBLE STRIKE':hit.fast?'CRITICAL HIT':b.combo>=3?`${b.combo} HIT COMBO`:'DIRECT HIT'):'COUNTERATTACK';
+  $('#damageNumber').textContent=hit.blocked?'BLOCK':`−${hit.damage}`;$('#impactLabel').textContent=label;$('#battleStage').dataset.impact=hit.ok?'hit':hit.blocked?'block':'miss';$('#damageNumber').className=hit.ok?'damage-number on-ai':'damage-number on-human';
+  const event=hit.phaseShift?'phase':b.outcome==='win'?'win':b.outcome==='loss'?'lose':b.ai<=30?'danger':hit.ok?b.combo>=3?'combo':'hit':'miss';
+  $('#taunt').textContent=Rivals.line(b.rival,event,state.round);$('#botCommit').textContent=`AI PICK: ${String.fromCharCode(65+bot.answer)} · ${hit.botCorrect?'CORRECT':'MISSED — ARMOUR EXPOSED'}`;
+  $('#feedback').hidden=false;$('#feedbackTitle').textContent=label;$('#feedbackWhy').textContent=c.why;$('#feedback').dataset.outcome=hit.ok?'hit':'miss';
+  $('#next').hidden=false;$('#next').textContent=b.phase==='ended'||b.round+1>=b.rounds?'SEE RESULT  ↗':'NEXT ATTACK  ↗';$('#reviewAnswer').hidden=false;$('#reviewAnswer').textContent='HOLD TO READ';$('#autoAdvance').textContent='Next attack in 2.4s';
+  Audio.play(hit.phaseShift?'boss':hit.blocked?'shield':hit.ok?hit.fast?'critical':b.combo>=3?'combo':'hit':'miss');track('question_answered',{mode:state.mode,round:state.round+1,correct:hit.ok?1:0,ai_correct:hit.botCorrect?1:0,damage:hit.damage,combo:b.combo});scheduleNext();
+}
+function scheduleNext(){clearTimeout(transition);transition=setTimeout(()=>{if(!paused&&!readHeld)nextAttack();},2400);}
+function nextAttack(){if(paused||state.battle?.phase==='asking')return;stopClocks();state.battle=Engine.advance(state.battle);if(state.battle.phase==='ended')finish();else render();}
+function pause(){if(paused||document.body.dataset.screen!=='game')return;paused=true;remainingMs=Math.max(0,deadline-performance.now());stopClocks();$('#pauseOverlay').hidden=false;$('#resumeBtn').focus();updateBattleUI();}
+function resume(){if(!paused)return;paused=false;$('#pauseOverlay').hidden=true;Audio.unlock();updateBattleUI();if(state.battle.phase==='asking')startClock();else if(!readHeld)scheduleNext();}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause();});
 
-function mergeCats(p){p.cats||={};for(const [k,v] of Object.entries(state.cats)){p.cats[k]??={right:0,total:0};p.cats[k].right+=v.right;p.cats[k].total+=v.total}}
-function unlockChecks(p){const have=new Set(p.unlocked||[]),logic=p.cats?.Logic?.right||0;const tests={first:p.wins>=1,perfect:p.best>=5,streak7:p.streak>=7,rating1200:p.rating>=1200,plays25:p.plays>=25,logic10:logic>=10,boss:p.rewards?.includes('boss'),impossible:p.rewards?.includes('impossible')};for(const [k,v] of Object.entries(tests))if(v&&!have.has(k)){p.unlocked.push(k);const a=achievementDefs.find(x=>x[0]===k);setTimeout(()=>toast(`${a[3]} Achievement: ${a[1]}`),350)}}
-function saveRun(){const p=profile(),total=typeof state.roundLimit==='number'?state.roundLimit:totalRounds(),countsStreak=state.mode==='daily';if(countsStreak&&p.last!==today){const y=new Date();y.setDate(y.getDate()-1);const yk=y.toISOString().slice(0,10);p.streak=p.last===yk?(p.streak||0)+1:1;p.last=today}p.best=Math.max(p.best||0,state.mode==='daily'?state.correct:0);p.plays=(p.plays||0)+1;p.wins=(p.wins||0)+(state.correct>=Math.ceil(total*.8)?1:0);mergeCats(p);const old=p.rating||1000,ranked=['daily','boss','impossible'].includes(state.mode),change=ranked?Math.round((state.correct/total-.55)*54):0;p.rating=Math.max(600,old+change);const xpGain=Math.max(20,Math.round(Math.max(0,state.score)*.45)+state.correct*15);p.xp=(p.xp||0)+xpGain;p.rewards||=[];if(state.mode==='boss'&&state.correct>=8&&!p.rewards.includes('boss'))p.rewards.push('boss');if(state.mode==='impossible'&&state.correct===1&&!p.rewards.includes('impossible'))p.rewards.push('impossible');unlockChecks(p);saveProfile(p);return{p,old,change,xpGain}}
-async function finish(){clearInterval(timer);const {p,old,change,xpGain}=saveRun(),total=typeof state.roundLimit==='number'?state.roundLimit:totalRounds(),humanRounds=state.humanRounds||0,aiRounds=state.aiRounds||0;$('#final').textContent=`${state.correct}/${total}`;$('#sharegrid').textContent=state.marks.join('');$('#verdict').textContent=humanRounds>aiRounds?'Machine humbled.':humanRounds===aiRounds?'Dead heat. Run it back.':'The machine takes this duel.';$('#meta').textContent=`Duel ${humanRounds}–${aiRounds} • ${Math.max(0,Math.round(state.score))} points • You ${state.correct}/${total} vs ${persona().name} ${state.aiCorrect||0}/${total}`;$('#ratingResult').textContent=`${old} → ${p.rating} ${change>=0?'▲':'▼'}${Math.abs(change)}`;$('#xpResult').textContent=`+${xpGain} XP`;track('battle_completed',{mode:state.mode,correct:state.correct,ai_correct:state.aiCorrect||0,human_rounds:humanRounds,ai_rounds:aiRounds,total,score:Math.max(0,Math.round(state.score))});$('#xpBar').style.width=`${((p.xp||0)%250)/2.5}%`;renderSkills();renderAchievements();show('result');window.dispatchEvent(new CustomEvent('beat-ai:result-ready',{detail:{correct:state.correct,total,score:Math.max(0,Math.round(state.score))}}));await loadBoard();if(state.mode==='daily')submitScore();if(p.plays%5===0)setTimeout(openReward,650);refresh()}
-async function submitScore(){try{await fetch('/api/scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dayKey:today,displayName:localStorage.getItem('beatAIName')||'Player',score:Math.max(0,Math.round(state.score)),correct:state.correct,elapsedMs:Date.now()-state.start,fingerprint:localStorage.getItem('beatAIFingerprint')||''})})}catch{}}
-async function loadBoard(){let rows=[];try{const r=await fetch('/api/scores?date='+today);const d=await r.json();rows=d.leaderboard||[]}catch{}if(!rows.length)rows=[{display_name:'NovaKite',score:500},{display_name:'HumanAfterAll',score:500},{display_name:'NoPromptNeeded',score:450}];$('#leaderboard').innerHTML=rows.slice(0,10).map((r,i)=>`<div class="row"><span>${i===0?'<span class="crown">👑</span>':'#'+(i+1)} ${r.display_name}</span><b>${r.score} pts</b></div>`).join('')}
-function renderSkills(){const p=profile(),cats=['Logic','Patterns','Language','Reasoning','Visual'];$('#skills').innerHTML=cats.map(k=>{const v=p.cats?.[k]||{right:0,total:0},pct=v.total?Math.round(v.right/v.total*100):0;return`<div class="skillrow"><label><b>${k}</b><span>${pct}%</span></label><div class="meter"><div style="width:${pct}%"></div></div></div>`}).join('');const played=Object.values(p.cats||{}).reduce((a,v)=>a+v.total,0);$('#skillSummary').textContent=played?`${played} answers analyzed`:'learning you…'}
-function renderAchievements(){const p=profile(),u=new Set(p.unlocked||[]);$('#achievements').innerHTML=achievementDefs.map(a=>`<div class="achievement ${u.has(a[0])?'':'locked'}"><b>${a[3]} ${a[1]}</b><span>${a[2]}</span></div>`).join('');$('#achievementCount').textContent=`${u.size} unlocked`}
-function renderFeed(){const p=profile(),items=p.plays?[`⚔️ You completed ${p.plays} battle${p.plays===1?'':'s'}`,`🏆 Your best daily score is ${p.best||0}/5`,`🔥 Your current streak is ${p.streak||0} day${p.streak===1?'':'s'}`,`🧠 Your Arena rating is ${p.rating||1000}`]:['Your real battle history will appear here after the first duel.'];$('#feed').innerHTML=items.map(x=>`<div class="feed-item">${x}</div>`).join('')}
-function openReward(){const opts=[['🧠','Neon Brain','A glowing cosmetic for surviving repeated machine contact.'],['🤠','Sheriff Byte','A ridiculous hat for your AI rival.'],['⚡','Voltage Trail','Lightning particles for result screens.']];const r=rand(opts);$('#rewardEmoji').textContent=r[0];$('#rewardName').textContent=r[1];$('#rewardDesc').textContent=r[2];$('#rewardModal').classList.add('open')}
-
-$('#play').onclick=()=>start('daily');$('#heroPlay').onclick=()=>start('daily');$('#stickyPlay').onclick=()=>start('daily');$('#practiceBtn').onclick=()=>start('practice');$('#lightningBtn').onclick=()=>start('lightning');$('#bossBtn').onclick=()=>start('boss');$('#impossibleBtn').onclick=()=>start('impossible');$('#again').onclick=()=>start('practice');$('#profileBtn').onclick=()=>{$('#profileModal').classList.add('open');$('#profileTitle').textContent=titleFor(profile().xp||0);$('#profileMeta').textContent=`Arena ${profile().rating||1000} • Level ${levelFor(profile().xp||0)}`;$('#profileContent').innerHTML=`<p>${profile().plays||0} battles • ${profile().wins||0} wins • ${profile().streak||0} day streak</p>`};$$('[data-close]').forEach(x=>x.onclick=()=>x.closest('.modal')?.classList.remove('open'));
-$('#upgradeBtn').onclick=()=>beginCheckout('home-card');$('#proBtn').onclick=()=>beginCheckout('header');$('#midgameProBtn').onclick=()=>beginCheckout('midgame');$('#resultUpgradeBtn').onclick=()=>beginCheckout('result');$('#confirmCheckoutBtn').onclick=createCheckout;$('#manageBtn').onclick=openPortal;$('#restoreBtn').onclick=()=>toast('Open your original checkout success link on this device to restore Pro.');
-captureAcquisition();document.body.dataset.screen='home';track('landing_view',{new_player:profile().plays?0:1});loadDaily();verifySession();refresh();
+const achievementDefs=[['first','FIRST BLOOD','Win a battle'],['perfect','UNTOUCHABLE','Win without a wrong answer'],['combo5','HUMAN HIGHLIGHT REEL','Land five correct answers in a row'],['comeback','STILL BREATHING','Win with 30 HP or less'],['streak7','SEVEN DAYS HUMAN','Play on seven consecutive days'],['boss','GOD COMPLEX, BROKEN','Defeat OMNI'],['lightning','QUICKER THAN SILICON','Win a Lightning battle'],['rivals','KNOW YOUR ENEMY','Defeat five different rivals']];
+function unlockChecks(p){const b=state.battle,win=b.outcome==='win',tests={first:p.wins>=1,perfect:win&&b.misses===0,combo5:b.bestCombo>=5,comeback:win&&b.human<=30,streak7:p.streak>=7,boss:win&&state.mode==='boss',lightning:win&&state.mode==='lightning',rivals:Object.values(p.rivals).filter(r=>r.wins>0).length>=5};const got=[];for(const [id]of achievementDefs)if(tests[id]&&!p.unlocked.includes(id)){p.unlocked.push(id);got.push(id);}return got;}
+function renderAchievements(){const p=profile();$('#achievements').innerHTML=achievementDefs.map(([id,name,desc])=>`<div class="achievement ${p.unlocked.includes(id)?'earned':'locked'}"><span>${p.unlocked.includes(id)?'◆':'◇'}</span><div><b>${name}</b><small>${desc}</small></div></div>`).join('');$('#achievementCount').textContent=`${achievementDefs.filter(x=>p.unlocked.includes(x[0])).length} / ${achievementDefs.length} EARNED`;}
+function renderSkills(){const p=profile();$('#skills').innerHTML=Object.entries(p.cats).filter(([,v])=>v.total>0).map(([name,v])=>`<div class="skillrow"><label><b>${escapeHtml(name)}</b><span>${Math.round(v.right/v.total*100)}%</span></label><div class="meter"><div style="width:${Math.round(v.right/v.total*100)}%"></div></div></div>`).join('')||'<p class="muted">Finish a battle to reveal your strengths.</p>';$('#skillSummary').textContent=`${Object.values(p.cats).reduce((n,v)=>n+(v.total||0),0)} ANSWERS ANALYZED`;}
+function finish(){
+  if(state.finished||state.battle.phase!=='ended')return;state.finished=true;stopClocks();const b=state.battle,win=b.outcome==='win';
+  const result=Engine.award(profile(),b,{runId:state.runId,day:state.day,mode:state.mode,correct:state.correct,total:state.marks.length,score:state.score});const p=result.p;
+  for(const [cat,v]of Object.entries(state.cats)){if(!Object.hasOwn(p.cats,cat))Object.defineProperty(p.cats,cat,{value:{right:0,total:0},enumerable:true,writable:true});p.cats[cat].right+=v.right;p.cats[cat].total+=v.total;}
+  const earned=unlockChecks(p);saveProfile(p);const newLevel=levelFor(p.xp)>levelFor(p.xp-result.xpGain);
+  $('#result').dataset.outcome=b.outcome;$('#resultKicker').textContent=win?(b.ai===0?'KNOCKOUT · HUMANITY WINS':'DECISION · HUMANITY WINS'):'DEFEAT · THE MACHINE TAKES IT';$('#verdict').textContent=win?'HUMAN 1. AI 0.':'NOT OVER. JUST ROUND ONE.';
+  $('#resultRivalArt').innerHTML=Rivals.portrait(b.rival.id);$('#resultRival').textContent=`${b.rival.name} ${win?'DEFEATED':'SURVIVES'}`;$('#resultQuote').textContent=`“${Rivals.line(b.rival,win?'win':'lose')}”`;
+  $('#final').textContent=`${state.correct}/${state.marks.length}`;$('#resultCombo').textContent=b.bestCombo;$('#resultHp').textContent=b.human;$('#sharegrid').textContent=state.marks.join('');$('#meta').textContent=`${state.score} points · ${b.criticals} critical hit${b.criticals===1?'':'s'} · ${b.human} vs ${b.ai} HP`;
+  $('#ratingResult').textContent=state.mode==='daily'?`${result.old} → ${p.rating}`:'UNRANKED ARENA';$('#xpResult').textContent=`+${result.xpGain} XP`;$('#xpBar').style.width=`${p.xp%250/2.5}%`;$('#levelResult').textContent=`${newLevel?'LEVEL UP! · ':''}LEVEL ${levelFor(p.xp)} · ${250-p.xp%250} XP TO GO`;
+  $('#earnedResult').textContent=earned.length?`UNLOCKED: ${earned.map(id=>achievementDefs.find(x=>x[0]===id)[1]).join(' · ')}`:win?`${p.winStreak} WIN STREAK · KEEP IT ALIVE`:'You earned XP. The machine earned a grudge.';
+  $('#again').textContent=`REMATCH ${b.rival.name}  ↗`;$('#again').onclick=()=>start(state.mode==='daily'?'arena':state.mode,b.rival.id);
+  const next=Rivals.list.find(r=>!r.pro&&r.unlock<=p.arenaWins&&r.unlock>0&&!p.rivals[r.id]?.wins);$('#nextRival').hidden=!next;$('#nextRival').textContent=next?`CHALLENGE ${next.name}`:'';$('#nextRival').onclick=()=>{if(next){selectedRival=next;start('arena',next.id);}};
+  $('#resultMoment').textContent=win?(b.human<=30?'COMEBACK COMPLETE':b.misses===0?'PERFECT FIGHT':state.mode==='boss'?'BOSS DESTROYED':'MACHINE HUMBLED'):'RUN. IT. BACK.';$('#shareLabel').textContent=win?'MAKE IT EVERYONE’S PROBLEM.':'THE REMATCH STARTS WITH YOU.';
+  show('result');refresh();Audio.play(win?'win':'loss');track('battle_completed',{mode:state.mode,rival:b.rival.id,outcome:b.outcome,correct:state.correct,total:state.marks.length,score:state.score,combo:b.bestCombo});
+  window.dispatchEvent(new CustomEvent('beat-ai:result-ready',{detail:{correct:state.correct,total:state.marks.length,score:state.score,outcome:b.outcome,rival:b.rival.id,combo:b.bestCombo,hp:b.human}}));loadBoard();if(state.mode==='daily'&&!b.suddenDeath)submitScore();
+}
+async function submitScore(){try{await fetch('/api/scores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({dayKey:state.day,displayName:localValue('beatAIName')||'Player',score:state.score,correct:Math.min(5,state.correct),elapsedMs:Date.now()-state.start,fingerprint:localValue('beatAIFingerprint')})});}catch{/* Local progress remains saved. */}}
+async function loadBoard(){
+  $('#leaderboard').textContent='Loading rankings…';const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  try{const r=await fetch('/api/scores?date='+dayKey(),{signal:controller.signal});if(!r.ok)throw new Error();const d=await r.json(),rows=Array.isArray(d.leaderboard)?d.leaderboard:[];
+    $('#leaderboard').innerHTML=rows.length?rows.slice(0,10).map((row,i)=>`<div class="row"><span>${i+1}. ${escapeHtml(row.display_name)}</span><b>${Number(row.score)||0} PTS</b></div>`).join(''):`<p class="muted">${d.enabled===false?'Global rankings are not connected. Your progress is saved on this device.':'No scores posted yet. Play the daily challenge to enter.'}</p>`;
+  }catch{$('#leaderboard').textContent='Rankings are temporarily unavailable. Your battle progress is safe.';}finally{clearTimeout(timeout);}
+}
+let modalFocus=null;
+function openModal(id){pause();modalFocus=document.activeElement;const el=$('#'+id);el.classList.add('open');el.setAttribute('aria-hidden','false');el.querySelector('button')?.focus();}
+function closeModal(el){el.classList.remove('open');el.setAttribute('aria-hidden','true');modalFocus?.focus();}
+$$('[data-close]').forEach(x=>x.onclick=()=>closeModal(x.closest('.modal')));$$('.modal').forEach(el=>el.addEventListener('click',e=>{if(e.target===el)closeModal(el);}));
+document.addEventListener('keydown',e=>{
+  const modal=$('.modal.open');if(modal){if(e.key==='Escape'){e.preventDefault();closeModal(modal);}if(e.key==='Tab'){const focus=[...modal.querySelectorAll('button:not([disabled]),input,select,a[href]')].filter(x=>!x.hidden);const first=focus[0],last=focus.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}return;}
+  if(document.body.dataset.screen!=='game'||e.repeat)return;if(e.key==='Escape'){e.preventDefault();paused?resume():pause();return;}if(paused||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;
+  const key=e.key.toLowerCase(),index='abcd'.indexOf(key);if(index>=0){e.preventDefault();answer(index);}else if(/^[1-4]$/.test(key)){e.preventDefault();answer(Number(key)-1);}else if(e.key==='Enter'&&state.battle.phase!=='asking'){e.preventDefault();nextAttack();}
+});
+$('#heroPlay').onclick=()=>start(selectedRival.pro?'boss':'arena');$('#play').onclick=()=>start('daily');$('#practiceBtn').onclick=()=>start('practice');$('#lightningBtn').onclick=()=>start('lightning');$('#bossBtn').onclick=()=>start('boss');$('#impossibleBtn').onclick=()=>start('impossible');
+$('#pauseBtn').onclick=pause;$('#resumeBtn').onclick=resume;$('#leaveBattle').onclick=goHome;$('#resultHome').onclick=goHome;$('#cancelLoad').onclick=goHome;$('#archiveDaily').onclick=()=>start('daily');$('#archiveFresh').onclick=()=>start('practice');$('#archiveHome').onclick=goHome;
+$('#power5050').onclick=()=>usePower('fifty');$('#powerShield').onclick=()=>usePower('shield');$('#powerDouble').onclick=()=>usePower('double');$('#overdriveBtn').onclick=()=>usePower('overdrive');$('#next').onclick=nextAttack;
+$('#reviewAnswer').onclick=()=>{readHeld=!readHeld;clearTimeout(transition);$('#reviewAnswer').textContent=readHeld?'CONTINUE AUTO-PLAY':'HOLD TO READ';$('#autoAdvance').textContent=readHeld?'Take your time. Next attack when you’re ready.':'Next attack in 2.4s';if(!readHeld)scheduleNext();};
+$('#muteBtn').onclick=()=>{Audio.toggle();refreshSound();};function refreshSound(){$('#muteBtn').textContent=Audio.muted?'SOUND OFF':'SOUND ON';$('#muteBtn').setAttribute('aria-pressed',String(!Audio.muted));}
+$('#profileBtn').onclick=()=>{const p=profile();$('#profileTitle').textContent=titleFor(p.xp);$('#profileMeta').textContent=`Level ${levelFor(p.xp)} · ${p.xp} XP · Arena rating ${p.rating}`;$('#profileContent').textContent=`${p.plays} battles · ${p.wins} wins · ${p.streak} day streak. Your legacy progress is preserved on this browser. New rival unlocks use arena wins.`;openModal('profileModal');};
+$('#upgradeBtn').onclick=()=>beginCheckout('home');$('#proBtn').onclick=()=>beginCheckout('header');$('#resultUpgradeBtn').onclick=()=>beginCheckout('result');$('#confirmCheckoutBtn').onclick=createCheckout;$('#manageBtn').onclick=openPortal;$('#restoreBtn').onclick=()=>openModal('restoreModal');
+window.BeatAIBattle={get state(){return state.battle;},refresh:updateBattleUI};
+const savedRival=Rivals.list.find(r=>r.id===Packs.read('beatAISelectedRival','static'));if(savedRival&&available(savedRival))selectedRival=savedRival;
+captureAcquisition();document.body.dataset.screen='home';refresh();refreshSound();loadDaily();verifySession();Packs.syncProEntitlement().then(()=>{if(!available(selectedRival))selectedRival=Rivals.list[0];refresh();});track('landing_view',{new_player:profile().plays?0:1});

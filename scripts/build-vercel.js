@@ -12,6 +12,10 @@ const rootFiles = [
   'styles.css',
   'social.css',
   'app.js',
+  'battle-engine.js',
+  'rivals.js',
+  'question-bank.js',
+  'battle-audio.js',
   'infinite-replay.js',
   'social.js',
   'teams.js',
@@ -40,3 +44,8 @@ if (fs.existsSync(indexPath)) {
 }
 
 console.log('Beat AI static build complete:', fs.readdirSync(out));
+
+// A viewport harness is available only on preview deployments, never production.
+if (process.env.VERCEL_ENV === 'preview') {
+  fs.copyFileSync(path.join(root, 'tests/viewport.html'), path.join(out, 'qa-viewport.html'));
+}

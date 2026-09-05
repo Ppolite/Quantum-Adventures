@@ -25,21 +25,30 @@ const api={
   stripeWebhook:read('api/stripe-webhook.js')
 };
 
-for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','midgameProBtn','resultUpgradeBtn','proOfferModal','confirmCheckoutBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard','heroPlay','stickyPlay']){
+for(const id of ['rating','lightningBtn','bossBtn','practiceBtn','friendBtn','impossibleBtn','feed','achievements','proBtn','upgradeBtn','resultUpgradeBtn','proOfferModal','confirmCheckoutBtn','manageBtn','share','sharePreview','challengeBanner','acceptChallengeBtn','companyCard','companyInterestBtn','companyModal','saveCompanyInterest','companyWorkspace','workspaceCompany','departmentBoard','teamBoard','heroPlay','battleHud','pauseBtn','muteBtn','overdriveBtn']){
   assert(new RegExp(`id=["']${id}["']`).test(html),`missing UI hook: ${id}`);
 }
 for(const asset of ['/app.js','/infinite-replay.js','/teams.js','/social.js','/styles.css','/social.css'])assert(html.includes(asset),`asset not loaded: ${asset}`);
-for(const token of ['hero-rival','visual-modes','cinematic-card','Turn AI literacy into a team sport','SHARED PRIVATE LEAGUE'])assert(html.includes(token),`missing homepage/Teams token: ${token}`);
-for(const token of ['.hero-juiced','.visual-modes','.cinematic-card','.workspace-board','.hero-conversion','.sticky-play'])assert(css.includes(token),`missing style: ${token}`);
+for(const token of ['hero-rival','rival-roster','battle-stage','Turn AI literacy into a team sport','SHARED PRIVATE LEAGUE'])assert(html.includes(token),`missing homepage/Teams token: ${token}`);
+for(const token of ['.hero','.rival-roster','.battle-stage','.workspace-board','.answer','prefers-reduced-motion'])assert(css.includes(token),`missing style: ${token}`);
 assert(socialCss.includes('.social-grid')&&socialCss.includes('.challenge-banner'),'social styles missing');
 
 for(const source of [app,replay,teams,social])new Function(source);
 for(const hook of ['getBotDecision','botPicks','aiCorrect','humanRounds','beginCheckout','createCheckout','pro_offer_viewed','beat-ai:result-ready','verifySession','openPortal','renderAchievements','renderSkills','landing_view','battle_started','question_answered','battle_completed','checkout_started'])assert(app.includes(hook),`missing client behavior: ${hook}`);
 
 // Fresh Packs + battle layer
-for(const token of ['/api/practice','beatAIRecentQuestionsV2','MAX_HISTORY=2000','requireFresh:true','AVOID_WINDOW=300','buildPack(3','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','PLAY A FRESH 15 →','GO PRO — UNLOCK UNLIMITED →','battleHud','power5050','powerShield','powerDouble','COMBO ×','syncProEntitlement','/api/subscription-status']){
+for(const token of ['/api/practice','beatAIRecentQuestionsV2','MAX_HISTORY=2000','requireFresh:true','AVOID_WINDOW=300','buildPack','FREE_PACK_LIMIT=3','FREE_PACK_ROUNDS=15','syncProEntitlement','/api/subscription-status']){
   assert(replay.includes(token),`missing Fresh Pack/battle behavior: ${token}`);
 }
+for(const asset of ['battle-engine.js','rivals.js','question-bank.js','battle-audio.js']){
+  assert(html.includes('/'+asset),`missing arena module ${asset}`);
+  new Function(read(asset));
+  assert(read('scripts/build-vercel.js').includes(asset),`Vercel omits ${asset}`);
+  assert(read('scripts/build-crazygames.js').includes(asset),`CrazyGames omits ${asset}`);
+}
+assert(!app.includes('NovaKite'),'No fabricated leaderboard entries');
+assert(!html.includes('midgame-pro'),'No sales pitch in the battlefield');
+assert(app.includes('d.challenges.length<5'),'Daily API must accept its 15-question contract');
 for(const token of ['OPENAI_API_KEY','uniqueAgainst','requireFresh','NEVER repeat','closely paraphrase','attempt<=3'])assert(api.practice.includes(token),`missing unique generation behavior: ${token}`);
 
 // Stripe Pro entitlement
