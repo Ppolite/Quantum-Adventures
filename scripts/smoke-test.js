@@ -22,10 +22,11 @@ assert(practice.includes('uniqueAgainst'),'practice API must reject exact repeat
 const replay=fs.readFileSync('infinite-replay.js','utf8');
 assert(replay.includes('MAX_HISTORY=2000'),'client must retain long question history');
 assert(replay.includes('requireFresh:true'),'Fresh Packs must request strict no-repeat generation');
-assert(replay.includes('battleHud'),'battle HUD must be present');
-assert(replay.includes('power5050'),'50/50 power-up must be present');
-assert(replay.includes('powerShield'),'shield power-up must be present');
-assert(replay.includes('powerDouble'),'double-strike power-up must be present');
+const html=fs.readFileSync('index.html','utf8');
+assert(html.includes('battleHud'),'battle HUD must be present');
+assert(html.includes('power5050'),'50/50 power-up must be present');
+assert(html.includes('powerShield'),'shield power-up must be present');
+assert(html.includes('powerDouble'),'double-strike power-up must be present');
 
 const app=fs.readFileSync('app.js','utf8');
 assert(app.includes('getBotDecision'),'AI rival must lock an independent answer');

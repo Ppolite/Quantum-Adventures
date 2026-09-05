@@ -6,6 +6,11 @@ on:
       - 'index.html'
       - 'api/**'
       - 'test.js'
+      - '*.js'
+      - '*.css'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
       - '.github/workflows/beat-ai-smoke.yml'
   push:
     branches: [main]
@@ -13,6 +18,11 @@ on:
       - 'index.html'
       - 'api/**'
       - 'test.js'
+      - '*.js'
+      - '*.css'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'package.json'
 
 jobs:
   smoke:
@@ -23,3 +33,6 @@ jobs:
         with:
           node-version: 20
       - run: node test.js
+      - run: node scripts/smoke-test.js
+      - run: node --test tests/*.test.js
+      - run: node scripts/build-vercel.js
